@@ -1,0 +1,1331 @@
+---
+title: "In_situ_probiotics"
+author: "J. Meyer"
+date: "4/26/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+
+```{r, echo=FALSE}
+library(dada2)
+library(ShortRead)
+library(ggplot2)
+library(phyloseq)
+library(vegan)
+library(knitr)
+library(ALDEx2)
+library(CoDaSeq)
+library(zCompositions)
+library(igraph)
+library(car)
+library(grDevices)
+library(propr)
+library(cowplot)
+library(randomcoloR)
+library(dplyr)
+library(reshape2)
+library(tibble)
+library(exactRankTests)
+library(nlme)
+library(data.table)
+library(Rmisc)
+library(indicspecies)
+library(viridis)
+writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
+```
+
+## Quality-filter the sequencing reads and create Amplicon Sequence Variant (ASV) tables with DADA2
+
+Put unjoined R1 and R2 fastq files, with adaptors and primers previously removed with cutadapt into a directory for DADA2. Here, our forward and reverse fastq filenames have format: SAMPLENAME_R1_cut.fastq.gz and SAMPLENAME_R2_cut.fastq.gz
+
+*****If you have samples from multiple sequencing runs, you need to determine the sequence variants for each run separately, then merge the ASV tables.
+Here is the dada2 page on merging runs: https://benjjneb.github.io/dada2/bigdata_paired.html
+
+
+```{r, echo=FALSE}
+#### 1st sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2_August"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats1.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2_August/seqtab.rds") 
+```
+
+
+```{r, echo=FALSE}
+#### 2nd sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2_October"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats2.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2_October/seqtab.rds")
+```
+
+
+```{r, echo=FALSE}
+#### 3rd sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2_December"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats3.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2_December/seqtab.rds")
+```
+
+
+```{r, echo=FALSE}
+#### 4th sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2_repeats"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "-V4"), `[`, 1) #### NS2408 sequencing files named differently, can't use "_" as separator
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats4.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2_repeats/seqtab.rds")
+```
+
+
+Now that I have determined the ASV tables for all 4 sequencing runs, I can merge the ASV tables and remove chimera sequences.
+
+```{r, echo=FALSE}
+st1 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2_August/seqtab.rds") 
+st2 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2_October/seqtab.rds") 
+st3 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2_December/seqtab.rds") 
+st4 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2_repeats/seqtab.rds") 
+st.all <- mergeSequenceTables(st1, st2, st3, st4, repeats="sum") # You may get the message "Duplicated sample names detected in the sequence table row names." to let you know that there are duplicate names across samples - it is not an error, just a message. If you have run a sample on more than one sequencing run, the ASV counts will be added together.
+#Remove chimeric sequences:
+seqtab.nochim <- removeBimeraDenovo(st.all, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+sum(seqtab.nochim)/sum(st.all)
+# Combine read stats from 4 runs and add chimera summary - This does not combine duplicate rows from repeated samples.
+stat1 <- read.table("dada_read_stats1.txt",sep="\t",header=TRUE, row.names=1)
+stat2 <- read.table("dada_read_stats2.txt",sep="\t",header=TRUE, row.names=1)
+stat3 <- read.table("dada_read_stats3.txt",sep="\t",header=TRUE, row.names=1)
+stat4 <- read.table("dada_read_stats4.txt",sep="\t",header=TRUE, row.names=1)
+stats.all<-bind_rows(stat1, stat2,stat3) 
+write.table(stats.all, "dada_read_stats_all.txt",sep="\t",col.names=NA)
+# Track reads through the pipeline
+# As a final check of our progress, we’ll look at the number of reads that made it through each step in the pipeline
+rowSums(seqtab.nochim)
+# need to write this out to add to dada read stats
+# SAVE the non-chimeric sequence variant table SO YOU DON'T HAVE TO REPEAT ALL OF THE ABOVE STEPS
+saveRDS(seqtab.nochim, file="~/Documents/Github/McH1-7_Probiotics_Field_Trials/BS2.rds")
+# RELOAD THE SAVED INFO FROM HERE (if you have closed the project):
+#seqtab.nochim <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/BS2.rds")
+```
+
+## Assign taxonomy in DADA2
+
+Make sure the taxonomy reference database is in your working directory. Keep the database file gzipped. Adjust path name below. This step is very time consuming.
+
+When taxonomy assignment is complete, we will use base R and phyloseq to clean up the taxonomy table. First, we will replace NAs and empty cells with the lowest taxonomy classification available. Second, we will use phyloseq to remove reads that are classified as Eukaryotes or unclassified at the domain level (ie, we are keeping only Bacteria and Archaea because that is what our primers target).
+
+```{r, echo=FALSE}
+taxa <- assignTaxonomy(seqtab.nochim, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
+# FIX the NAs in the taxa table
+taxon <- as.data.frame(taxa,stringsAsFactors=FALSE)
+taxon$Phylum[is.na(taxon$Phylum)] <- taxon$Kingdom[is.na(taxon$Phylum)]
+taxon$Class[is.na(taxon$Class)] <- taxon$Phylum[is.na(taxon$Class)]
+taxon$Order[is.na(taxon$Order)] <- taxon$Class[is.na(taxon$Order)]
+taxon$Family[is.na(taxon$Family)] <- taxon$Order[is.na(taxon$Family)]
+taxon$Genus[is.na(taxon$Genus)] <- taxon$Family[is.na(taxon$Genus)]
+write.table(taxon,"silva_taxa_table.txt",sep="\t",col.names=NA)
+write.table(seqtab.nochim, "silva_otu_table.txt",sep="\t",col.names=NA)
+# Create phyloseq object from otu and taxonomy tables from dada2, along with the sample metadata.
+otu <- read.table("silva_otu_table.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps
+# remove chloroplasts and mitochondria and Eukaryota
+get_taxa_unique(ps, "Family") 
+get_taxa_unique(ps, "Order") 
+get_taxa_unique(ps, "Kingdom") 
+ps <- subset_taxa(ps, Family !="Mitochondria")
+ps <- subset_taxa(ps, Order !="Chloroplast")
+ps <- subset_taxa(ps, Kingdom !="Eukaryota")
+ps <- subset_taxa(ps, Kingdom !="NA")
+get_taxa_unique(ps, "Family") 
+get_taxa_unique(ps, "Order") 
+get_taxa_unique(ps, "Kingdom")
+ps #20179 taxa and 197 samples
+# Now export cleaned otu and taxa tables from phyloseq for future reference
+otu = as(otu_table(ps), "matrix")
+taxon = as(tax_table(ps), "matrix")
+metadata = as(sample_data(ps), "matrix")
+write.table(otu,"silva_nochloronomito_otu_table.txt",sep="\t",col.names=NA)
+write.table(taxon,"silva_nochloronomito_taxa_table.txt",sep="\t",col.names=NA)
+# export ASV table as relative abundance
+ps_ra<-transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
+otu_ra = as(otu_table(ps_ra), "matrix")
+write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA)
+```
+
+Now, time to explore the data. Old numbers in comments - update since addition of repeats (sequencing run 4)
+
+```{r, echo=FALSE}
+
+ps #20179 taxa and 197 samples
+get_taxa_unique(ps, "Order") #427
+get_taxa_unique(ps, "Class") #182
+ps5<-filter_taxa(ps, function(x) mean(x) >5, TRUE)
+ntaxa(ps5) #736
+ps10<-filter_taxa(ps, function(x) mean(x) >10, TRUE)
+ntaxa(ps10) #382
+get_taxa_unique(ps, "Genus") #1699
+get_taxa_unique(ps5, "Genus") #315
+get_taxa_unique(ps10, "Genus") #189
+
+# Now export filtered otu and taxa tables from phyloseq for future reference after removing sample blanks
+ps5 = subset_samples(ps5, TagID != "blank")
+ps5 #736 taxa and 194 samples
+otu_ps5 = as(otu_table(ps5), "matrix")
+taxon_ps5 = as(tax_table(ps5), "matrix")
+metadata = as(sample_data(ps5), "matrix")
+write.table(otu_ps5,"silva_nochloronomito_otu_table_ps5.txt",sep="\t",col.names=NA)
+write.table(taxon_ps5,"silva_nochloronomito_taxa_table_ps5.txt",sep="\t",col.names=NA)
+write.table(metadata,"metadata_noblanks.txt",sep="\t",col.names=NA)
+ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
+otu_ps5_ra = as(otu_table(ps5_ra), "matrix")
+write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_ps5_RA.txt",sep="\t",col.names=NA)
+
+ps10 = subset_samples(ps10, TagID != "blank")
+ps10
+otu_ps10 = as(otu_table(ps10), "matrix")
+taxon_ps10 = as(tax_table(ps10), "matrix")
+write.table(otu_ps10,"silva_nochloronomito_otu_table_ps10.txt",sep="\t",col.names=NA)
+write.table(taxon_ps10,"silva_nochloronomito_taxa_table_ps10.txt",sep="\t",col.names=NA)
+```
+
+## Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components
+
+```{r, echo=FALSE}
+# use an ASV table that has been filtered to remove low-abundance ASVs, no blanks
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+
+# First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
+# Also transposing here, need samples as rows
+d.czm <- cmultRepl(t(otu), method="CZM", label=0)
+# Perform the center-log-ratio (CLR) transformation 
+d.clr <- codaSeq.clr(d.czm)
+# transpose matrix of CLR transformed data for ordination and dendrogram
+E.clr <- t(d.clr)
+# plot compositional PCA biplot (perform a singular value decomposition)
+d.pcx <- prcomp(E.clr)
+# calculate percent variance explained for the axis labels
+pc1 <- round(d.pcx$sdev[1]^2/sum(d.pcx$sdev^2),2)
+pc2 <- round(d.pcx$sdev[2]^2/sum(d.pcx$sdev^2),2)
+xlab <- paste("PC1: ", pc1, sep="")
+ylab <- paste("PC2: ", pc2, sep="")
+#biplot(d.pcx, cex=c(0.6,0.4), var.axes=F,scale=1, xlab=xlab, ylab=ylab)
+summary(d.pcx)
+str(d.pcx)
+screeplot(d.pcx)
+# replot PCA with ggplot2 (showing samples only)
+df_out <- as.data.frame(d.pcx$x)
+theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
+
+samples$Date<-factor(samples$Date,levels=c("A","O","J"))
+samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
+
+pdf("PCA.pdf",bg = "white",width=8.5)
+p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$Treatment,shape=samples$Date))
+p<-p+geom_point(size=5)+
+  theme(axis.title = element_text(size=14))+
+  theme(axis.text=element_text(size=12))+
+  theme(legend.title = element_text(size=14))+
+  theme(legend.text = element_text(size=12))+
+  scale_fill_manual(values=treatcolors)+
+  scale_shape_manual(values=c(21,22,24))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+p + labs(x=xlab, y=ylab, fill="Treatment", shape="Date") + coord_fixed()
+dev.off()
+
+## Use phyloseq/vegan to perform ANOSIM/PERMANOVA using Aitchison distance
+
+# create a phyloseq object with the ASV table that has been filtered to remove low-abundance ASVs, no blanks
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps
+
+# set metadata as factors for anosim/permanova
+treat<-as.character(samples$Treatment)
+date<-as.character(samples$Date)
+health<-as.character(samples$HealthState)
+tag<-as.character(samples$TagID)
+
+# permanova between groups using Aitchison distance
+dist.clr <- dist(E.clr)
+perm<-adonis(dist.clr~treat*date,as(sample_data(ps),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~treat*health,as(sample_data(ps),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~health*date,as(sample_data(ps),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~tag*date,as(sample_data(ps),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~tag*health,as(sample_data(ps),"data.frame"))
+print(perm)
+
+# anosim between groups using Aitchison distance
+dist.clr <- dist(E.clr)
+ano.date <- anosim(dist.clr, date, permutations=999)
+pdf("anosim_date.pdf",width=8.5)
+plot(ano.date)
+dev.off()
+ano.treat <- anosim(dist.clr, treat, permutations=999)
+pdf("anosim_treat.pdf",width=8.5)
+plot(ano.treat)
+dev.off()
+ano.health <- anosim(dist.clr, health, permutations=999)
+pdf("anosim_health.pdf",width=8.5)
+plot(ano.health)
+dev.off()
+
+## Beta Diversity Dispersions
+#calculate multivariate dispersions based on condition
+mod <-betadisper(dist.clr, date)
+#one way anova
+anova(mod)
+#boxplots
+plot(mod)
+boxplot(mod)
+
+#calculate multivariate dispersions based on condition
+mod2 <-betadisper(dist.clr, treat)
+#one way anova
+anova(mod2)
+#boxplots
+plot(mod2)
+boxplot(mod2)
+
+
+#calculate multivariate dispersions based on condition
+mod3 <-betadisper(dist.clr, health)
+#one way anova
+anova(mod3)
+#boxplots
+plot(mod3)
+boxplot(mod3)
+```
+
+
+
+
+Let's try just diseased, with and without treatment
+
+
+
+```{r, echo=FALSE}
+# create a phyloseq object with the ASV table that has been filtered to remove low-abundance ASVs, no blanks
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps5 # 736 taxa, 194 samples
+dd<-subset_samples(ps5, HealthState=="Disease")
+dd  # 736 taxa, 78 samples
+otu_dd = as(otu_table(dd), "matrix")
+taxon_dd = as(tax_table(dd), "matrix")
+meta_dd = as(sample_data(dd), "matrix")
+write.table(otu_dd,"silva_nochloronomito_otu_table_dd.txt",sep="\t",col.names=NA)
+write.table(taxon_dd,"silva_nochloronomito_taxa_table_dd.txt",sep="\t",col.names=NA)
+write.table(meta_dd,"metadata_dd.txt",sep="\t",col.names=NA)
+otu <- read.table("silva_nochloronomito_otu_table_dd.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_dd.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_dd.txt",sep="\t",header=T,row.names=1)
+
+# First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
+# Also transposing here, need samples as rows
+d.czm <- cmultRepl(t(otu), method="CZM", label=0)
+# Perform the center-log-ratio (CLR) transformation 
+d.clr <- codaSeq.clr(d.czm)
+# transpose matrix of CLR transformed data for ordination and dendrogram
+E.clr <- t(d.clr)
+# plot compositional PCA biplot (perform a singular value decomposition)
+d.pcx <- prcomp(E.clr)
+# calculate percent variance explained for the axis labels
+pc1 <- round(d.pcx$sdev[1]^2/sum(d.pcx$sdev^2),2)
+pc2 <- round(d.pcx$sdev[2]^2/sum(d.pcx$sdev^2),2)
+xlab <- paste("PC1: ", pc1, sep="")
+ylab <- paste("PC2: ", pc2, sep="")
+#biplot(d.pcx, cex=c(0.6,0.4), var.axes=F,scale=1, xlab=xlab, ylab=ylab)
+summary(d.pcx)
+str(d.pcx)
+screeplot(d.pcx)
+# replot PCA with ggplot2 (showing samples only)
+df_out <- as.data.frame(d.pcx$x)
+theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
+
+samples$Date<-factor(samples$Date,levels=c("A","O","J"))
+samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
+
+pdf("PCA_dd.pdf",bg = "white",width=8.5)
+p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$Treatment,shape=samples$Date))
+p<-p+geom_point(size=5)+
+  theme(axis.title = element_text(size=14))+
+  theme(axis.text=element_text(size=12))+
+  theme(legend.title = element_text(size=14))+
+  theme(legend.text = element_text(size=12))+
+  scale_fill_manual(values=treatcolors)+
+  scale_shape_manual(values=c(21,22,24))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+p + labs(x=xlab, y=ylab, fill="Treatment", shape="Date") + coord_fixed()
+dev.off()
+
+# set metadata as factors for anosim/permanova
+treat<-as.character(samples$Treatment)
+date<-as.character(samples$Date)
+tag<-as.character(samples$TagID)
+
+# permanova between groups using Aitchison distance
+dist.clr <- dist(E.clr)
+perm<-adonis(dist.clr~treat*date,as(sample_data(dd),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~treat*tag,as(sample_data(dd),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~tag*date,as(sample_data(dd),"data.frame"))
+print(perm)
+
+```
+
+Let's try just AH, with and without treatment
+
+
+```{r, echo=FALSE}
+# create a phyloseq object with the ASV table that has been filtered to remove low-abundance ASVs, no blanks
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps5 # 736 taxa, 194 samples
+hd<-subset_samples(ps5, HealthState=="Apparently Healthy")
+hd  # 736 taxa, 91 samples
+otu_hd = as(otu_table(hd), "matrix")
+taxon_hd = as(tax_table(hd), "matrix")
+meta_hd = as(sample_data(hd), "matrix")
+write.table(otu_hd,"silva_nochloronomito_otu_table_hd.txt",sep="\t",col.names=NA)
+write.table(taxon_hd,"silva_nochloronomito_taxa_table_hd.txt",sep="\t",col.names=NA)
+write.table(meta_hd,"metadata_hd.txt",sep="\t",col.names=NA)
+otu <- read.table("silva_nochloronomito_otu_table_hd.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_hd.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_hd.txt",sep="\t",header=T,row.names=1)
+
+# First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
+# Also transposing here, need samples as rows
+d.czm <- cmultRepl(t(otu), method="CZM", label=0)
+# Perform the center-log-ratio (CLR) transformation 
+d.clr <- codaSeq.clr(d.czm)
+# transpose matrix of CLR transformed data for ordination and dendrogram
+E.clr <- t(d.clr)
+# plot compositional PCA biplot (perform a singular value decomposition)
+d.pcx <- prcomp(E.clr)
+# calculate percent variance explained for the axis labels
+pc1 <- round(d.pcx$sdev[1]^2/sum(d.pcx$sdev^2),2)
+pc2 <- round(d.pcx$sdev[2]^2/sum(d.pcx$sdev^2),2)
+xlab <- paste("PC1: ", pc1, sep="")
+ylab <- paste("PC2: ", pc2, sep="")
+#biplot(d.pcx, cex=c(0.6,0.4), var.axes=F,scale=1, xlab=xlab, ylab=ylab)
+summary(d.pcx)
+str(d.pcx)
+screeplot(d.pcx)
+# replot PCA with ggplot2 (showing samples only)
+df_out <- as.data.frame(d.pcx$x)
+theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
+
+samples$Date<-factor(samples$Date,levels=c("A","O","J"))
+samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
+
+pdf("PCA_hd.pdf",bg = "white",width=8.5)
+p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$Treatment,shape=samples$Date))
+p<-p+geom_point(size=5)+
+  theme(axis.title = element_text(size=14))+
+  theme(axis.text=element_text(size=12))+
+  theme(legend.title = element_text(size=14))+
+  theme(legend.text = element_text(size=12))+
+  scale_fill_manual(values=treatcolors)+
+  scale_shape_manual(values=c(21,22,24))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+p + labs(x=xlab, y=ylab, fill="Treatment", shape="Date") + coord_fixed()
+dev.off()
+
+# set metadata as factors for anosim/permanova
+treat<-as.character(samples$Treatment)
+date<-as.character(samples$Date)
+tag<-as.character(samples$TagID)
+treated<-as.character(samples$Treated)
+
+# permanova between groups using Aitchison distance
+dist.clr <- dist(E.clr)
+perm<-adonis(dist.clr~treat*date,as(sample_data(dd),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~treat*tag,as(sample_data(dd),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~tag*date,as(sample_data(dd),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~treated*date,as(sample_data(dd),"data.frame"))
+print(perm)
+
+```
+
+
+
+
+```{r, echo=FALSE}
+##### bar charts
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps5 #736 taxa and 194 samples
+ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
+ps5_ra #736 taxa and 194 samples
+get_taxa_unique(ps5_ra, "Order") #100
+get_taxa_unique(ps5_ra, "Class") #39
+n <- 39
+palette <- distinctColorPalette(n)
+#you can rerun the previous line to get a new selection of colors
+# keep list of colors used in palette that is most appealing
+sink("palette.txt")
+print(palette)
+sink()
+
+#treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
+#condcolors <- c("Healthy"="coral", "Apparently Healthy"="maroon", "Disease"="magenta4")
+samples$Date<-factor(samples$Date,levels=c("A","O","J"))
+samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+samples$HealthState<-factor(samples$HealthState,levels=c("Healthy","Apparently Healthy","Diease"))
+
+pdf("barchart_Class.pdf",width=13)
+p1=plot_bar(ps5_ra, fill="Class")+
+  geom_bar(aes(fill=Class), stat="identity",position="stack")+
+  facet_grid(.~HealthState,scales="free",space="free")+
+  theme(strip.text=element_text(face="bold"))+
+  theme(axis.text.x=element_text(angle = 90))+
+  scale_fill_manual(values=palette)+
+  theme(plot.title = element_text(face="italic"))+
+  theme(axis.title.x = element_blank())+
+  theme(legend.position = "bottom")
+p1
+dev.off()
+```
+
+## Plot relative abundances of Pseudoalteromonas ASVs by treatment type
+
+
+```{r, echo=FALSE}
+Pseudoalt<-subset_taxa(ps5_ra, Genus=="Pseudoalteromonas")
+Pseudoalt #10 taxa and 194 samples
+otu.Pseudoalt = as(otu_table(Pseudoalt), "matrix")
+otu.Pseudoalt<-as.data.frame(otu.Pseudoalt)
+otu.Pseudoalt<-rownames_to_column(otu.Pseudoalt,var="Sample")
+#export ASV sequences for supplemental table
+#write.table(otu.Pseudoalt,"Pseudoalteromonas_ASVs.txt",sep="\t",col.names=NA)
+
+names(otu.Pseudoalt)[2]<-"ASV1"
+names(otu.Pseudoalt)[3]<-"ASV2"
+names(otu.Pseudoalt)[4]<-"ASV3"
+names(otu.Pseudoalt)[5]<-"ASV4"
+names(otu.Pseudoalt)[6]<-"ASV5"
+names(otu.Pseudoalt)[7]<-"ASV6"
+names(otu.Pseudoalt)[8]<-"ASV7"
+names(otu.Pseudoalt)[9]<-"ASV8"
+names(otu.Pseudoalt)[10]<-"ASV9"
+names(otu.Pseudoalt)[11]<-"ASV10"
+
+meta.Pseudoalt = as(sample_data(Pseudoalt), "matrix")
+meta.Pseudoalt<-as.data.frame(meta.Pseudoalt)
+meta.Pseudoalt<-rownames_to_column(meta.Pseudoalt,var="Sample")
+otu.Pseudoalt.meta<-merge(meta.Pseudoalt,otu.Pseudoalt,"Sample")
+otu_long_p<-reshape2::melt(otu.Pseudoalt.meta,id.vars=c("Sample","TagID","HealthState","Treatment","Treated","AllPresent","Status","Date"),variable.name="ASV",value.name="Proportion")
+
+#PaletteWoodsHole bog and rocky_beach
+pseudoalt_colors<-c("ASV1"="#AC7070","ASV2"="#D6D9DA","ASV3"="#33291B","ASV4"="#C5C7C7","ASV5"="#937771","ASV6"="#5A4A35","ASV7"="#476AA7","ASV8"="#716347","ASV9"="#7299CE","ASV10"="#A2937A")
+
+# bubble plot, first need to detach plyr (or it overrides dplyr operations and the group_by doesn't work); detach Rmisc before plyr or it won't detach plyr
+detach(package:Rmisc)
+detach(package:plyr)
+otu_long_p_ASV <- otu_long_p %>% group_by(Treatment,ASV) %>% summarize(ASV_mean=mean(Proportion))
+otu_long_p_ASV$Treatment <- factor(otu_long_p_ASV$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+
+pdf("Pseudoalteromonas_ASVs.pdf",bg = "white",width=8,height=5)
+p1<-ggplot(otu_long_p_ASV,aes(ASV,Treatment,color=ASV))+
+  geom_point(aes(size=ASV_mean))+
+  theme_bw()+
+  scale_size(range = c(0.5,10),name="Mean Relative Abundance")+
+  scale_color_viridis(discrete=TRUE)+
+  #scale_color_manual(values=pseudoalt_colors)+
+  guides(color=FALSE)+  #removes the legend for the colors
+  theme(axis.text.x=element_text(size=10,angle=90,hjust=1,vjust=0,color="black"))+
+  theme(axis.text.y=element_text(size=12,color="black"))+
+  theme(axis.title.x=element_blank())+
+  theme(axis.title.y=element_blank())
+p1
+dev.off()
+```
+
+## Plot all Pseudoalteromonas ASVs by Treatment
+
+```{r, echo=FALSE}
+otu_long_p$Treatment <- factor(otu_long_p$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+otu_long_p$Date<-factor(otu_long_p$Date,levels=c("A","O","J"))
+labels <- c(A = "August", O = "October", J="January")
+otu_long_p$HealthState<-factor(otu_long_p$HealthState,levels=c("Healthy","Apparently Healthy","Disease"))
+condcolors <- c("Healthy"="#E69F00", "Apparently Healthy"="#999999", "Disease"="#000000")
+
+#one-way anova
+model1<- aov(otu_long_p$Proportion~otu_long_p$Treatment)
+summary(model1)
+TukeyHSD(model1)
+
+model2<- aov(otu_long_p$Proportion~otu_long_p$Date)
+summary(model2)
+TukeyHSD(model2)
+
+model3<- aov(otu_long_p$Proportion~otu_long_p$HealthState)
+summary(model3)
+TukeyHSD(model3)
+
+pdf("Pseudoalteromonas_byTreatment_Date.pdf",width=8,height=6)
+p2<-ggplot(otu_long_p,aes(x=Treatment,y=Proportion))+
+  geom_boxplot(outlier.shape=NA)+
+  theme_bw()+
+  facet_grid(Date~.,space="free",labeller=labeller(Date = labels))+
+  geom_jitter(position=position_jitter(width=.1, height=0),aes(color=HealthState),size=3)+
+  scale_color_manual(values=condcolors)+
+  theme(axis.title.x=element_blank())+
+  theme(text=element_text(size=14))+
+  theme(strip.text.y=element_text(size=14))+
+  ylab("Relative Abundance of Pseudoalteromonas ASVs")
+p2
+dev.off()
+
+pdf("Pseudoalteromonas_byTreatment.pdf",width=8,height=6)
+p3<-ggplot(otu_long_p,aes(x=Treatment,y=Proportion))+
+  geom_boxplot(outlier.shape=NA)+
+  theme_bw()+
+  #facet_grid(Date~.,space="free",labeller=labeller(Date = labels))+
+  geom_jitter(position=position_jitter(width=.1, height=0),aes(color=HealthState),size=3)+
+  scale_color_manual(values=condcolors)+
+  theme(axis.title.x=element_blank())+
+  theme(text=element_text(size=14))+
+  theme(strip.text.y=element_text(size=14))+
+  ylab("Relative Abundance of Pseudoalteromonas ASVs")
+p3
+dev.off()
+
+# Repeat tests with only ASV1 (exact sequence match over 253-bp V4 region to Pseudoalteromonas strain McH1-7)
+PseudoASV1 <- filter(otu_long_p, ASV == "ASV1")
+
+#one-way anova
+model1<- aov(PseudoASV1$Proportion~PseudoASV1$Treatment)
+summary(model1)
+TukeyHSD(model1)
+
+model2<- aov(PseudoASV1$Proportion~PseudoASV1$Date)
+summary(model2)
+TukeyHSD(model2)
+
+model3<- aov(PseudoASV1$Proportion~PseudoASV1$HealthState)
+summary(model3)
+TukeyHSD(model3)
+
+```
+
+
+## Plot relative abundances of Vibrio ASVs by treatment type
+
+```{r, echo=FALSE}
+vibrio<-subset_taxa(ps5_ra, Genus=="Vibrio")
+vibrio
+otu.vibrio = as(otu_table(vibrio), "matrix")
+taxon.vibrio = as(tax_table(vibrio), "matrix")
+meta.vibrio = as(sample_data(vibrio), "matrix")
+otu.vibrio<-as.data.frame(otu.vibrio)
+otu.vibrio<-rownames_to_column(otu.vibrio,var="Sample")
+#export ASV sequences for supplemental table
+write.table(otu.vibrio,"vibrio_ASVs.txt",sep="\t",col.names=NA)
+
+names(otu.vibrio)[2]<-"ASV1"
+names(otu.vibrio)[3]<-"ASV2"
+names(otu.vibrio)[4]<-"ASV3"
+names(otu.vibrio)[5]<-"ASV4"
+names(otu.vibrio)[6]<-"ASV5"
+names(otu.vibrio)[7]<-"ASV6"
+names(otu.vibrio)[8]<-"ASV7"
+names(otu.vibrio)[9]<-"ASV8"
+names(otu.vibrio)[10]<-"ASV9"
+names(otu.vibrio)[11]<-"ASV10"
+names(otu.vibrio)[12]<-"ASV11"
+names(otu.vibrio)[13]<-"ASV12"
+names(otu.vibrio)[14]<-"ASV13"
+names(otu.vibrio)[15]<-"ASV14"
+names(otu.vibrio)[16]<-"ASV15"
+names(otu.vibrio)[17]<-"ASV16"
+names(otu.vibrio)[18]<-"ASV17"
+names(otu.vibrio)[19]<-"ASV18"
+names(otu.vibrio)[20]<-"ASV19"
+names(otu.vibrio)[21]<-"ASV20"
+names(otu.vibrio)[22]<-"ASV21"
+names(otu.vibrio)[23]<-"ASV22"
+names(otu.vibrio)[24]<-"ASV23"
+names(otu.vibrio)[25]<-"ASV24"
+names(otu.vibrio)[26]<-"ASV25"
+names(otu.vibrio)[27]<-"ASV26"
+names(otu.vibrio)[28]<-"ASV27"
+names(otu.vibrio)[29]<-"ASV28"
+
+meta.vibrio<-as.data.frame(meta.vibrio)
+meta.vibrio<-rownames_to_column(meta.vibrio,var="Sample")
+otu.vibrio.meta<-merge(meta.vibrio,otu.vibrio,"Sample")
+otu_long<-reshape2::melt(otu.vibrio.meta,id.vars=c("Sample","TagID","HealthState","Treatment","Treated","AllPresent","Status","Date"),variable.name="ASV",value.name="Proportion")
+
+# bubble plot, first need to detach plyr (or it overrides dplyr operations and the group_by doesn't work); detach Rmisc before plyr or it won't detach plyr
+detach(package:Rmisc)
+detach(package:plyr)
+otu_long_ASV <- otu_long %>% group_by(Treatment,ASV) %>% summarize(ASV_mean=mean(Proportion))
+#otu_long_ASV$radius <- sqrt(otu_long_ASV$ASV_mean / pi )
+otu_long_ASV$Treatment <- factor(otu_long_ASV$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+
+pdf("Vibrio_ASVs.pdf",bg = "white",width=10,height=5)
+p1<-ggplot(otu_long_ASV,aes(ASV,Treatment,color=ASV))+
+  geom_point(aes(size=ASV_mean))+
+  scale_size(range = c(0.5,10),name="Mean Relative Abundance")+
+  guides(color=FALSE)+  #removes the legend for the colors
+  scale_color_viridis(discrete=TRUE)+
+  theme(axis.text.x=element_text(size=10,angle=90,hjust=1,vjust=0,color="black"))+
+  theme(axis.text.y=element_text(size=12,color="black"))+
+  theme(axis.title.x=element_blank())+
+  theme(axis.title.y=element_blank())
+p1
+dev.off()
+
+```
+
+## Indicator species analysis
+
+Add metadata columns to ASV table with relative abundances as shown at the top of this tutorial: https://jkzorz.github.io/2019/07/02/Indicator-species-analysis.html
+
+
+```{r, echo=FALSE}
+
+asv <- read.table("silva_nochloronomito_otu_table_ps5_RA_ForIndicspecies.txt",sep="\t",header=TRUE)
+abund = asv[,6:ncol(asv)]
+treated=asv$Treated
+inv = multipatt(abund, treated, func = "r.g", control = how(nperm=9999))
+summary(inv)
+
+health=asv$HealthState
+inv2 = multipatt(abund, health, func = "r.g", control = how(nperm=9999))
+summary(inv2)
+
+```
+
+#ANCOM Function - compare across multiple treatments groups using a compositional appproach
+#https://sites.google.com/site/siddharthamandal1985/research
+
+#Need to run this first in order to run ANCOM on data
+
+```{r, echo=FALSE}
+ancom.W = function(otu_data,var_data,
+                   adjusted,repeated,
+                   main.var,adj.formula,
+                   repeat.var,long,rand.formula,
+                   multcorr,sig){
+
+  n_otu=dim(otu_data)[2]-1
+
+  otu_ids=colnames(otu_data)[-1]
+
+  if(repeated==F){
+    data_comp=data.frame(merge(otu_data,var_data,by="Sample.ID",all.y=T),row.names=NULL)
+    #data_comp=data.frame(merge(otu_data,var_data[,c("Sample.ID",main.var)],by="Sample.ID",all.y=T),row.names=NULL)
+  }else if(repeated==T){
+    data_comp=data.frame(merge(otu_data,var_data,by="Sample.ID"),row.names=NULL)
+    # data_comp=data.frame(merge(otu_data,var_data[,c("Sample.ID",main.var,repeat.var)],by="Sample.ID"),row.names=NULL)
+  }
+
+  base.formula = paste0("lr ~ ",main.var)
+  if(repeated==T){
+    repeat.formula = paste0(base.formula," | ", repeat.var)
+  }
+  if(adjusted==T){
+    adjusted.formula = paste0(base.formula," + ", adj.formula)
+  }
+
+  if( adjusted == F & repeated == F ){
+    fformula  <- formula(base.formula)
+  } else if( adjusted == F & repeated == T & long == T ){
+    fformula  <- formula(base.formula)
+  }else if( adjusted == F & repeated == T & long == F ){
+    fformula  <- formula(repeat.formula)
+  }else if( adjusted == T & repeated == F  ){
+    fformula  <- formula(adjusted.formula)
+  }else if( adjusted == T & repeated == T  ){
+    fformula  <- formula(adjusted.formula)
+  }else{
+    stop("Problem with data. Dataset should contain OTU abundances, groups,
+         and optionally an ID for repeated measures.")
+  }
+
+
+  if( repeated==FALSE & adjusted == FALSE){
+    if( length(unique(data_comp[,which(colnames(data_comp)==main.var)]))==2 ){
+      tfun <- exactRankTests::wilcox.exact
+    } else{
+      tfun <- stats::kruskal.test
+    }
+  }else if( repeated==FALSE & adjusted == TRUE){
+    tfun <- stats::aov
+  }else if( repeated== TRUE & adjusted == FALSE & long == FALSE){
+    tfun <- stats::friedman.test
+  }else if( repeated== TRUE & adjusted == FALSE & long == TRUE){
+    tfun <- nlme::lme
+  }else if( repeated== TRUE & adjusted == TRUE){
+    tfun <- nlme::lme
+  }
+
+  logratio.mat <- matrix(NA, nrow=n_otu, ncol=n_otu)
+  for(ii in 1:(n_otu-1)){
+    for(jj in (ii+1):n_otu){
+      data.pair <- data_comp[,which(colnames(data_comp)%in%otu_ids[c(ii,jj)])]
+      lr <- log((1+as.numeric(data.pair[,1]))/(1+as.numeric(data.pair[,2])))
+
+      lr_dat <- data.frame( lr=lr, data_comp,row.names=NULL )
+
+      if(adjusted==FALSE&repeated==FALSE){  ## Wilcox, Kruskal Wallis
+        logratio.mat[ii,jj] <- tfun( formula=fformula, data = lr_dat)$p.value
+      }else if(adjusted==FALSE&repeated==TRUE&long==FALSE){ ## Friedman's
+        logratio.mat[ii,jj] <- tfun( formula=fformula, data = lr_dat)$p.value
+      }else if(adjusted==TRUE&repeated==FALSE){ ## ANOVA
+        model=tfun(formula=fformula, data = lr_dat,na.action=na.omit)
+        picker=which(gsub(" ","",row.names(summary(model)[[1]]))==main.var)
+        logratio.mat[ii,jj] <- summary(model)[[1]][["Pr(>F)"]][picker]
+      }else if(repeated==TRUE&long==TRUE){ ## GEE
+        model=tfun(fixed=fformula,data = lr_dat,
+                   random = formula(rand.formula),
+                   correlation=corAR1(),
+                   na.action=na.omit)
+        picker=which(gsub(" ","",row.names(anova(model)))==main.var)
+        logratio.mat[ii,jj] <- anova(model)[["p-value"]][picker]
+      }
+    }
+  }
+
+  ind <- lower.tri(logratio.mat)
+  logratio.mat[ind] <- t(logratio.mat)[ind]
+
+  logratio.mat[which(is.finite(logratio.mat)==FALSE)] <- 1
+
+  mc.pval <- t(apply(logratio.mat,1,function(x){
+    s <- p.adjust(x, method = "BH")
+    return(s)
+  }))
+
+  a <- logratio.mat[upper.tri(logratio.mat,diag=FALSE)==TRUE]
+
+  b <- matrix(0,ncol=n_otu,nrow=n_otu)
+  b[upper.tri(b)==T] <- p.adjust(a, method = "BH")
+  diag(b)  <- NA
+  ind.1    <- lower.tri(b)
+  b[ind.1] <- t(b)[ind.1]
+
+  #########################################
+  ### Conservative
+  if(multcorr==1){
+    W <- apply(b,1,function(x){
+      subp <- length(which(x<sig))
+    })
+    ### Moderate
+  } else if(multcorr==2){
+    W <- apply(mc.pval,1,function(x){
+      subp <- length(which(x<sig))
+    })
+    ### No correction
+  } else if(multcorr==3){
+    W <- apply(logratio.mat,1,function(x){
+      subp <- length(which(x<sig))
+    })
+  }
+
+  return(W)
+  }
+
+
+ANCOM.main = function(OTUdat,Vardat,
+                      adjusted,repeated,
+                      main.var,adj.formula,
+                      repeat.var,longitudinal,
+                      random.formula,
+                      multcorr,sig,
+                      prev.cut){
+
+  p.zeroes=apply(OTUdat[,-1],2,function(x){
+    s=length(which(x==0))/length(x)
+  })
+
+  OTUdat.thinned=OTUdat[,c(1,1+which(p.zeroes<prev.cut))]
+
+  otu.names=colnames(OTUdat.thinned)[-1]
+
+  W.detected   <- ancom.W(OTUdat.thinned,Vardat,
+                          adjusted,repeated,
+                          main.var,adj.formula,
+                          repeat.var,longitudinal,random.formula,
+                          multcorr,sig)
+
+  W_stat       <- W.detected
+
+  W_frame = data.frame(otu.names,W_stat,row.names=NULL)
+  W_frame = W_frame[order(-W_frame$W_stat),]
+
+  W_frame$detected_0.9=rep(FALSE,dim(W_frame)[1])
+  W_frame$detected_0.8=rep(FALSE,dim(W_frame)[1])
+  W_frame$detected_0.7=rep(FALSE,dim(W_frame)[1])
+  W_frame$detected_0.6=rep(FALSE,dim(W_frame)[1])
+
+  W_frame$detected_0.9[which(W_frame$W_stat>0.9*(dim(OTUdat.thinned[,-1])[2]-1))]=TRUE
+  W_frame$detected_0.8[which(W_frame$W_stat>0.8*(dim(OTUdat.thinned[,-1])[2]-1))]=TRUE
+  W_frame$detected_0.7[which(W_frame$W_stat>0.7*(dim(OTUdat.thinned[,-1])[2]-1))]=TRUE
+  W_frame$detected_0.6[which(W_frame$W_stat>0.6*(dim(OTUdat.thinned[,-1])[2]-1))]=TRUE
+
+  final_results=list(W_frame)
+  names(final_results)=c("W.taxa")
+  return(final_results)
+}
+```
+
+Perform ANCOM analysis
+
+```{r, echo=FALSE}
+
+#Read in count data, not relative abundance, no low-abundance ASVs removed
+otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps #20031 taxa and 196 samples
+#Remove blanks
+ps = subset_samples(ps, TagID != "blank")
+ps #20031 taxa and 194 samples
+
+get_taxa_unique(ps, "Family") #678
+dat <- tax_glom(ps, taxrank = "Family")
+datm <- psmelt(dat)
+otud <- reshape2::dcast(datm, Sample ~ Family, value.var = 'Abundance', fun.aggregate = sum)
+colnames(otud)[1] <- "Sample.ID"
+metadat <- sample_data(ps) 
+metadat <- as.data.frame(as.matrix(metadat))
+metadat <- tibble::rownames_to_column(metadat, "Sample.ID")
+names(otud) <- make.names(names(otud))
+otu_test <- otud
+write.table(otu_test,"ANCOM_otu_test.txt",sep="\t",col.names=NA)
+metadat <- select(metadat, c("Sample.ID","HealthState","Treatment","Status","Date","TagID","Treated")) # use select to only use treatment columns of interest
+map_test <- metadat
+write.table(map_test,"ANCOM_map_test.txt",sep="\t",col.names=NA)
+
+#bring in saved otu_test and map_test, if needed
+otu_test<-read.table("ANCOM_otu_test.txt",sep="\t",header=T,row.names=1)
+map_test<-read.table("ANCOM_map_test.txt",sep="\t",header=T,row.names=1)
+
+Vardat <- map_test
+
+#### ANCOM test - Treatment, not adjusted, more than 2 levels = Kruskal Wallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="Treatment", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res1 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res1,"ANCOM_family_KruskallWallis_Treatment.txt",sep="\t",col.names=NA)
+res2 <- res1[which(res1$detected_0.7==TRUE),] 
+
+#### ANCOM test - Treatment, Adjusted by HealthState, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="Treatment", #main variable or fator
+                                 adj.formula= "HealthState", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res3 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res3,"ANCOM_family_ANOVA_Treatment_adjHealthState.txt",sep="\t",col.names=NA)
+res4 <- res3[which(res3$detected_0.7==TRUE),] 
+
+#### ANCOM test - HealthState, no adjustment, KruskallWallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="HealthState", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res5 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res5,"ANCOM_family_KruskallWallis_HealthState.txt",sep="\t",col.names=NA)
+res6 <- res5[which(res5$detected_0.7==TRUE),] 
+
+#### ANCOM test - HealthState, Adjusted by Treatment, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="HealthState", #main variable or fator
+                                 adj.formula= "Treatment", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res7 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res7,"ANCOM_family_ANOVA_HealthState_adjTreatment.txt",sep="\t",col.names=NA)
+res8 <- res7[which(res7$detected_0.7==TRUE),] 
+
+#### ANCOM test - Status, no adjustment, KruskallWallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="Status", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res9 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res9,"ANCOM_family_KruskallWallis_Status.txt",sep="\t",col.names=NA)
+res10 <- res9[which(res9$detected_0.7==TRUE),] 
+
+#### ANCOM test - Status, Adjusted by Treatment, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="Status", #main variable or fator
+                                 adj.formula= "Treatment", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res11 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res11,"ANCOM_family_ANOVA_Status_adjTreatment.txt",sep="\t",col.names=NA)
+res12 <- res11[which(res11$detected_0.7==TRUE),] 
+
+#### ANCOM test - Date, no adjustment, KruskallWallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="Date", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res13 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res13,"ANCOM_family_KruskallWallis_Date.txt",sep="\t",col.names=NA)
+res14 <- res13[which(res13$detected_0.7==TRUE),] 
+
+#### ANCOM test - Date, Adjusted by Treatment, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="Date", #main variable or fator
+                                 adj.formula= "Treatment", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res15 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res15,"ANCOM_family_ANOVA_Date_adjTreatment.txt",sep="\t",col.names=NA)
+res16 <- res15[which(res15$detected_0.7==TRUE),]
+res16b <- res15[which(res15$detected_0.9==TRUE),]
+
+#### ANCOM test - Colony (TagID) no adjustment, KruskallWallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="TagID", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res17 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res17,"ANCOM_family_KruskallWallis_Colony.txt",sep="\t",col.names=NA)
+res18 <- res17[which(res17$detected_0.7==TRUE),] 
+
+#### ANCOM test - Colony, Adjusted by Date, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="TagID", #main variable or fator
+                                 adj.formula= "Date", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res19 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res19,"ANCOM_family_ANOVA_Colony_adjDate.txt",sep="\t",col.names=NA)
+res20 <- res19[which(res19$detected_0.7==TRUE),] 
+
+```
+
+Now plot the ANCOM results
+
+```{r, echo=FALSE}
+
+sig_sites <- glue::glue_collapse(droplevels(factor(res16b$otu.names)), sep = ", ") #this is to get a list of the families that are different
+print(sig_sites)
+
+#Calculate relative abundance
+dim(otu_test) #194 rows 679 columns
+otu_test_relabund <-  sweep(otu_test[,2:679], 1, rowSums(otu_test[,2:679]), '/')
+otu_test_relnames <- cbind(map_test[,1:7],otu_test_relabund)
+
+# Select only the significant differentially abundant families listed by sig_sites
+# Note that any family names with punctuation must be enclosed with quotation marks!
+sig_dis <- select(otu_test_relnames, "Sample.ID", HealthState, Treatment, Status, Date, TagID, Treated, Desulfovibrionaceae, DEV007, Rubritaleaceae, "Clostridiaceae_4", Clostridiales, FGL7S, Micrococcaceae, Halomonadaceae, Sedimenticolaceae, Thiovulaceae, Crocinitomicaceae, Microtrichaceae, Midichloriaceae, Rhodobacteraceae, Shewanellaceae, Cyanobiaceae, Saccharospirillaceae, Terasakiellaceae, Thiohalorhabdaceae, Vibrionaceae, Microbacteriaceae, Pseudoalteromonadaceae, Alphaproteobacteria, Geodermatophilaceae, Phormidiaceae, Flavobacteriaceae, Nitrincolaceae, Phycisphaeraceae, Bacteria, Desulfobulbaceae, Thiomicrospiraceae, Rhizobiaceae, Rhodanobacteraceae)
+sig_long <- reshape2::melt(sig_dis, id.vars=c("Sample.ID","HealthState","Treatment","Status","Date","TagID","Treated"),variable.name="Family",value.name="Proportion")
+sum_sig <- Rmisc::summarySE(sig_long, measurevar = "Proportion", groupvars = c("Date","Family"), na.rm=TRUE)
+
+sum_sig$Date<-factor(sum_sig$Date,levels=c("A","O","J"))
+cols <- c("A"="#56B4E9", "O"="#E69F00", "J"="#999999")
+
+pdf("ANCOM_Date_adjTreatment.pdf")
+fams <- ggplot(sum_sig, aes(x=Family, y=Proportion))+
+  geom_point(size=4, aes(color=Date))+
+  scale_color_manual(values=cols)+
+  coord_flip()+
+  theme_bw()+
+  theme(axis.text.x=element_text(size=14))+
+  theme(axis.text.y=element_text(size=14))+
+  theme(axis.title.x=element_text(size=14))+
+  theme(axis.title.y=element_text(size=14))+
+  #theme(legend.justification=c(1,1), legend.position=c(1,1))+
+  geom_errorbar(aes(ymin=Proportion-se, ymax=Proportion+se), width=.1)+
+  theme(legend.title = element_blank())+
+  theme(legend.text = element_text(size=12))
+fams
+dev.off()
+```
+
