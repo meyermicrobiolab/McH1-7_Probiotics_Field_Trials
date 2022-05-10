@@ -36,6 +36,7 @@ library(data.table)
 library(Rmisc)
 library(indicspecies)
 library(viridis)
+library(biomehorizon)
 writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
 ```
 
@@ -49,7 +50,7 @@ Here is the dada2 page on merging runs: https://benjjneb.github.io/dada2/bigdata
 
 ```{r, echo=FALSE}
 #### 1st sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2_August"
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
@@ -90,14 +91,14 @@ track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab)
 colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
 rownames(track) <- sample.names
 head(track)
-write.table(track, "dada_read_stats1.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2_August/seqtab.rds") 
+write.table(track, "dada_read_stats_NS2107_B2.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2/seqtab.rds") 
 ```
 
 
 ```{r, echo=FALSE}
 #### 2nd sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2_October"
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
@@ -138,14 +139,14 @@ track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab)
 colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
 rownames(track) <- sample.names
 head(track)
-write.table(track, "dada_read_stats2.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2_October/seqtab.rds")
+write.table(track, "dada_read_stats_NS2172_BS2.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2/seqtab.rds")
 ```
 
 
 ```{r, echo=FALSE}
 #### 3rd sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2_December"
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
@@ -186,14 +187,14 @@ track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab)
 colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
 rownames(track) <- sample.names
 head(track)
-write.table(track, "dada_read_stats3.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2_December/seqtab.rds")
+write.table(track, "dada_read_stats_NS2211_BS2.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2/seqtab.rds")
 ```
 
 
 ```{r, echo=FALSE}
 #### 4th sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2_repeats"
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
@@ -234,18 +235,18 @@ track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab)
 colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
 rownames(track) <- sample.names
 head(track)
-write.table(track, "dada_read_stats4.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2_repeats/seqtab.rds")
+write.table(track, "dada_read_stats_NS2408_BS2.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2/seqtab.rds")
 ```
 
 
 Now that I have determined the ASV tables for all 4 sequencing runs, I can merge the ASV tables and remove chimera sequences.
 
 ```{r, echo=FALSE}
-st1 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2_August/seqtab.rds") 
-st2 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2_October/seqtab.rds") 
-st3 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2_December/seqtab.rds") 
-st4 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2_repeats/seqtab.rds") 
+st1 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2/seqtab.rds") 
+st2 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2/seqtab.rds") 
+st3 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2/seqtab.rds") 
+st4 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2/seqtab.rds") 
 st.all <- mergeSequenceTables(st1, st2, st3, st4, repeats="sum") # You may get the message "Duplicated sample names detected in the sequence table row names." to let you know that there are duplicate names across samples - it is not an error, just a message. If you have run a sample on more than one sequencing run, the ASV counts will be added together.
 #Remove chimeric sequences:
 seqtab.nochim <- removeBimeraDenovo(st.all, method="consensus", multithread=TRUE, verbose=TRUE)
@@ -275,7 +276,7 @@ Make sure the taxonomy reference database is in your working directory. Keep the
 When taxonomy assignment is complete, we will use base R and phyloseq to clean up the taxonomy table. First, we will replace NAs and empty cells with the lowest taxonomy classification available. Second, we will use phyloseq to remove reads that are classified as Eukaryotes or unclassified at the domain level (ie, we are keeping only Bacteria and Archaea because that is what our primers target).
 
 ```{r, echo=FALSE}
-taxa <- assignTaxonomy(seqtab.nochim, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
+taxa <- assignTaxonomy(seqtab.nochim, "~/Documents/Github/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
 # FIX the NAs in the taxa table
 taxon <- as.data.frame(taxa,stringsAsFactors=FALSE)
 taxon$Phylum[is.na(taxon$Phylum)] <- taxon$Kingdom[is.na(taxon$Phylum)]
@@ -321,24 +322,33 @@ otu_ra = as(otu_table(ps_ra), "matrix")
 write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA)
 ```
 
-Now, time to explore the data. Old numbers in comments - update since addition of repeats (sequencing run 4)
+Now, time to explore the data.
 
 ```{r, echo=FALSE}
-
-ps #20179 taxa and 197 samples
-get_taxa_unique(ps, "Order") #427
-get_taxa_unique(ps, "Class") #182
+otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps 
+get_taxa_unique(ps, "Order") 
+get_taxa_unique(ps, "Class")
 ps5<-filter_taxa(ps, function(x) mean(x) >5, TRUE)
-ntaxa(ps5) #736
+ntaxa(ps5) 
 ps10<-filter_taxa(ps, function(x) mean(x) >10, TRUE)
-ntaxa(ps10) #382
-get_taxa_unique(ps, "Genus") #1699
-get_taxa_unique(ps5, "Genus") #315
-get_taxa_unique(ps10, "Genus") #189
+ntaxa(ps10) 
+get_taxa_unique(ps, "Genus") 
+get_taxa_unique(ps5, "Genus") 
+get_taxa_unique(ps10, "Genus") 
 
 # Now export filtered otu and taxa tables from phyloseq for future reference after removing sample blanks
 ps5 = subset_samples(ps5, TagID != "blank")
-ps5 #736 taxa and 194 samples
+ps5 
 otu_ps5 = as(otu_table(ps5), "matrix")
 taxon_ps5 = as(tax_table(ps5), "matrix")
 metadata = as(sample_data(ps5), "matrix")
