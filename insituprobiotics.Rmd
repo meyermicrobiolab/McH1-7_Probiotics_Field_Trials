@@ -507,6 +507,16 @@ saveRDS(seqtab.nochim, file="~/Documents/Github/McH1-7_Probiotics_Field_Trials/B
 
 
 ```{r, echo=FALSE}
+st1 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2/seqtab.rds") 
+st2 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2/seqtab.rds") 
+st3 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2/seqtab.rds") 
+st4 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2/seqtab.rds") 
+st5 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1/seqtab.rds")
+st6 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1/seqtab.rds") 
+st7 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1/seqtab.rds")
+st8 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3/seqtab.rds")
+st9 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3/seqtab.rds")
+st.all <- mergeSequenceTables(st1, st2, st3, st4, st5, st6, st7, st8, st9, repeats="sum") # You may get the message "Duplicated sample names detected in the sequence table row names." to let you know that there are duplicate names across samples - it is not an error, just a message. If you have run a sample on more than one sequencing run, the ASV counts will be added together.
 #Remove chimeric sequences:
 seqtab.nochim <- removeBimeraDenovo(st.all, method="consensus", multithread=TRUE, verbose=TRUE)
 dim(seqtab.nochim)
@@ -521,16 +531,16 @@ stat6 <- read.table("dada_read_stats6.txt",sep="\t",header=TRUE, row.names=1)
 stat7 <- read.table("dada_read_stats7.txt",sep="\t",header=TRUE, row.names=1)
 stat8 <- read.table("dada_read_stats8.txt",sep="\t",header=TRUE, row.names=1)
 stat9 <- read.table("dada_read_stats9.txt",sep="\t",header=TRUE, row.names=1)
-stats.all<-bind_rows(stat1, stat2,stat3,stat4,stat5,stat6,stat7,stat8) #leave off stat9?
+stats.all<-bind_rows(stat1, stat2,stat3,stat4,stat5,stat6,stat7,stat8,stat9) 
 write.table(stats.all, "dada_read_stats_all.txt",sep="\t",col.names=NA)
 # Track reads through the pipeline
 # As a final check of our progress, we’ll look at the number of reads that made it through each step in the pipeline
 rowSums(seqtab.nochim)
 # need to write this out to add to dada read stats
 # SAVE the non-chimeric sequence variant table SO YOU DON'T HAVE TO REPEAT ALL OF THE ABOVE STEPS
-saveRDS(seqtab.nochim, file="~/Documents/Github/McH1-7_Probiotics_Field_Trials/BSsites.rds")
+saveRDS(seqtab.nochim, file="~/Documents/Github/McH1-7_Probiotics_Field_Trials/probiotics.rds")
 # RELOAD THE SAVED INFO FROM HERE (if you have closed the project):
-#seqtab.nochim <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/BSsites.rds")
+#seqtab.nochim <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/probiotics.rds")
 ```
 
 ## Assign taxonomy in DADA2
