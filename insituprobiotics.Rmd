@@ -48,6 +48,155 @@ Put unjoined R1 and R2 fastq files, with adaptors and primers previously removed
 Here is the dada2 page on merging runs: https://benjjneb.github.io/dada2/bigdata_paired.html
 
 
+
+
+BS1 site field trials Jan 2020 - abandoned due to covid, but got before and after first treatment
+```{r, echo=FALSE}
+#### 1st sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats_NS1968R_BS1.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1/seqtab.rds") 
+```
+
+
+```{r, echo=FALSE}
+#### 2nd sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats_NS1995_BS1.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1/seqtab.rds") 
+```
+
+
+```{r, echo=FALSE}
+#### 3rd sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats_NS2051_BS1.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1/seqtab.rds") 
+```
+
+
+BS2 site field trials 2020-2021
+
 ```{r, echo=FALSE}
 #### 1st sequencing run
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2"
@@ -239,197 +388,11 @@ write.table(track, "dada_read_stats_NS2408_BS2.txt",sep="\t",col.names=NA)
 saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2/seqtab.rds")
 ```
 
-```{r, echo=FALSE}
-#### 5th sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1"
-list.files(path)
-fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
-fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
-sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
-# Perform filtering and trimming
-filt_path <- file.path(path, "filtered") 
-filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
-                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=TRUE)
-head(out)
-# Learn the Error Rates, it TAKES TIME!
-errF <- learnErrors(filtFs, multithread=TRUE)
-errR <- learnErrors(filtRs, multithread=TRUE)
-plotErrors(errF, nominalQ=TRUE)
-# Dereplicate the filtered fastq files
-derepFs <- derepFastq(filtFs, verbose=TRUE)
-derepRs <- derepFastq(filtRs, verbose=TRUE)
-names(derepFs) <- sample.names
-names(derepRs) <- sample.names
-# Infer the sequence variants in each sample
-dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
-dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
-# Inspecting the dada-class object returned by dada:
-dadaFs[[1]]
-# Merge the denoised forward and reverse reads:
-mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
-# Inspect the merger data.frame from the first sample
-head(mergers[[1]])
-# Construct sequence table
-seqtab <- makeSequenceTable(mergers)
-dim(seqtab)
-# Inspect distribution of sequence lengths
-table(nchar(getSequences(seqtab)))
-getN <- function(x) sum(getUniques(x))
-track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
-colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
-rownames(track) <- sample.names
-head(track)
-write.table(track, "dada_read_stats_NS1968R_BS1.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1/seqtab.rds") 
-```
 
-```{r, echo=FALSE}
-#### 6th sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1"
-list.files(path)
-fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
-fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
-sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
-# Perform filtering and trimming
-filt_path <- file.path(path, "filtered") 
-filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
-                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=TRUE)
-head(out)
-# Learn the Error Rates, it TAKES TIME!
-errF <- learnErrors(filtFs, multithread=TRUE)
-errR <- learnErrors(filtRs, multithread=TRUE)
-plotErrors(errF, nominalQ=TRUE)
-# Dereplicate the filtered fastq files
-derepFs <- derepFastq(filtFs, verbose=TRUE)
-derepRs <- derepFastq(filtRs, verbose=TRUE)
-names(derepFs) <- sample.names
-names(derepRs) <- sample.names
-# Infer the sequence variants in each sample
-dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
-dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
-# Inspecting the dada-class object returned by dada:
-dadaFs[[1]]
-# Merge the denoised forward and reverse reads:
-mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
-# Inspect the merger data.frame from the first sample
-head(mergers[[1]])
-# Construct sequence table
-seqtab <- makeSequenceTable(mergers)
-dim(seqtab)
-# Inspect distribution of sequence lengths
-table(nchar(getSequences(seqtab)))
-getN <- function(x) sum(getUniques(x))
-track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
-colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
-rownames(track) <- sample.names
-head(track)
-write.table(track, "dada_read_stats_NS1995_BS1.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1/seqtab.rds") 
-```
 
+BS3 and MK-48 sites field trials 2021-2022
 ```{r, echo=FALSE}
-#### 7th sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1"
-list.files(path)
-fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
-fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
-sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
-# Perform filtering and trimming
-filt_path <- file.path(path, "filtered") 
-filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
-                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=TRUE)
-head(out)
-# Learn the Error Rates, it TAKES TIME!
-errF <- learnErrors(filtFs, multithread=TRUE)
-errR <- learnErrors(filtRs, multithread=TRUE)
-plotErrors(errF, nominalQ=TRUE)
-# Dereplicate the filtered fastq files
-derepFs <- derepFastq(filtFs, verbose=TRUE)
-derepRs <- derepFastq(filtRs, verbose=TRUE)
-names(derepFs) <- sample.names
-names(derepRs) <- sample.names
-# Infer the sequence variants in each sample
-dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
-dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
-# Inspecting the dada-class object returned by dada:
-dadaFs[[1]]
-# Merge the denoised forward and reverse reads:
-mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
-# Inspect the merger data.frame from the first sample
-head(mergers[[1]])
-# Construct sequence table
-seqtab <- makeSequenceTable(mergers)
-dim(seqtab)
-# Inspect distribution of sequence lengths
-table(nchar(getSequences(seqtab)))
-getN <- function(x) sum(getUniques(x))
-track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
-colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
-rownames(track) <- sample.names
-head(track)
-write.table(track, "dada_read_stats_NS2051_BS1.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1/seqtab.rds") 
-```
-
-```{r, echo=FALSE}
-#### 8th sequencing run
-path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3"
-list.files(path)
-fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
-fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
-sample.names <- sapply(strsplit(basename(fnFs), "-515rcbc"), `[`, 1)
-
-# Perform filtering and trimming
-filt_path <- file.path(path, "filtered") 
-filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
-                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=TRUE)
-head(out)
-# Learn the Error Rates, it TAKES TIME!
-errF <- learnErrors(filtFs, multithread=TRUE)
-errR <- learnErrors(filtRs, multithread=TRUE)
-plotErrors(errF, nominalQ=TRUE)
-# Dereplicate the filtered fastq files
-derepFs <- derepFastq(filtFs, verbose=TRUE)
-derepRs <- derepFastq(filtRs, verbose=TRUE)
-names(derepFs) <- sample.names
-names(derepRs) <- sample.names
-# Infer the sequence variants in each sample
-dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
-dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
-# Inspecting the dada-class object returned by dada:
-dadaFs[[1]]
-# Merge the denoised forward and reverse reads:
-mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
-# Inspect the merger data.frame from the first sample
-head(mergers[[1]])
-# Construct sequence table
-seqtab <- makeSequenceTable(mergers)
-dim(seqtab)
-# Inspect distribution of sequence lengths
-table(nchar(getSequences(seqtab)))
-getN <- function(x) sum(getUniques(x))
-track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
-colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
-rownames(track) <- sample.names
-head(track)
-write.table(track, "dada_read_stats_NS2696_BS3.txt",sep="\t",col.names=NA)
-saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3/seqtab.rds")
-```
-
-```{r, echo=FALSE}
-#### 9th sequencing run
+#### 1st sequencing run
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -476,46 +439,68 @@ write.table(track, "dada_read_stats_NS2661_BS3.txt",sep="\t",col.names=NA)
 saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3/seqtab.rds")
 ```
 
+```{r, echo=FALSE}
+#### 2nd sequencing run
+path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2_cut.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "-515rcbc"), `[`, 1)
+
+# Perform filtering and trimming
+filt_path <- file.path(path, "filtered") 
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(150,150),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+                     compress=TRUE, multithread=TRUE)
+head(out)
+# Learn the Error Rates, it TAKES TIME!
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+# Dereplicate the filtered fastq files
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Infer the sequence variants in each sample
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Inspecting the dada-class object returned by dada:
+dadaFs[[1]]
+# Merge the denoised forward and reverse reads:
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
+# Construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled")
+rownames(track) <- sample.names
+head(track)
+write.table(track, "dada_read_stats_NS2696_BS3.txt",sep="\t",col.names=NA)
+saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3/seqtab.rds")
+```
+
+
 Now that I have determined the ASV tables for all 9 sequencing runs, I can merge the ASV tables and remove chimera sequences.
-
-#Original script
-
-st1 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2/seqtab.rds") 
-st2 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2/seqtab.rds") 
-st3 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2/seqtab.rds") 
-st4 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2/seqtab.rds") 
-st.all <- mergeSequenceTables(st1, st2, st3, st4, repeats="sum") # You may get the message "Duplicated sample names detected in the sequence table row names." to let you know that there are duplicate names across samples - it is not an error, just a message. If you have run a sample on more than one sequencing run, the ASV counts will be added together.
-#Remove chimeric sequences:
-seqtab.nochim <- removeBimeraDenovo(st.all, method="consensus", multithread=TRUE, verbose=TRUE)
-dim(seqtab.nochim)
-sum(seqtab.nochim)/sum(st.all)
-# Combine read stats from 4 runs and add chimera summary - This does not combine duplicate rows from repeated samples.
-stat1 <- read.table("dada_read_stats1.txt",sep="\t",header=TRUE, row.names=1)
-stat2 <- read.table("dada_read_stats2.txt",sep="\t",header=TRUE, row.names=1)
-stat3 <- read.table("dada_read_stats3.txt",sep="\t",header=TRUE, row.names=1)
-stat4 <- read.table("dada_read_stats4.txt",sep="\t",header=TRUE, row.names=1)
-stats.all<-bind_rows(stat1, stat2,stat3) 
-write.table(stats.all, "dada_read_stats_all.txt",sep="\t",col.names=NA)
-# Track reads through the pipeline
-# As a final check of our progress, we’ll look at the number of reads that made it through each step in the pipeline
-rowSums(seqtab.nochim)
-# need to write this out to add to dada read stats
-# SAVE the non-chimeric sequence variant table SO YOU DON'T HAVE TO REPEAT ALL OF THE ABOVE STEPS
-saveRDS(seqtab.nochim, file="~/Documents/Github/McH1-7_Probiotics_Field_Trials/BS2.rds")
-# RELOAD THE SAVED INFO FROM HERE (if you have closed the project):
-#seqtab.nochim <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/BS2.rds")
 
 
 ```{r, echo=FALSE}
-st1 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2/seqtab.rds") 
-st2 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2/seqtab.rds") 
-st3 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2/seqtab.rds") 
-st4 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2/seqtab.rds") 
-st5 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1/seqtab.rds")
-st6 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1/seqtab.rds") 
-st7 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1/seqtab.rds")
-st8 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3/seqtab.rds")
-st9 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3/seqtab.rds")
+st1 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1/seqtab.rds")
+st2 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1/seqtab.rds") 
+st3 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1/seqtab.rds")
+st4 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2/seqtab.rds") 
+st5 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2/seqtab.rds") 
+st6 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2/seqtab.rds") 
+st7 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2/seqtab.rds") 
+st8 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3/seqtab.rds")
+st9 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3/seqtab.rds")
 st.all <- mergeSequenceTables(st1, st2, st3, st4, st5, st6, st7, st8, st9, repeats="sum") # You may get the message "Duplicated sample names detected in the sequence table row names." to let you know that there are duplicate names across samples - it is not an error, just a message. If you have run a sample on more than one sequencing run, the ASV counts will be added together.
 #Remove chimeric sequences:
 seqtab.nochim <- removeBimeraDenovo(st.all, method="consensus", multithread=TRUE, verbose=TRUE)
