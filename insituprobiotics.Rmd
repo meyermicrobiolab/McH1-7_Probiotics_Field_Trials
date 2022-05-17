@@ -50,9 +50,9 @@ Here is the dada2 page on merging runs: https://benjjneb.github.io/dada2/bigdata
 
 
 
-BS1 site field trials Jan 2020 - abandoned due to covid, but got before and after first treatment
+BS1 site field trials Jan 2020 - abandoned due to covid, but got before and after first treatment; 3 sequencing runs total
 ```{r, echo=FALSE}
-#### 1st sequencing run
+#### 1st sequencing run for BS1
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1968R_BS1"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -100,7 +100,7 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS19
 
 
 ```{r, echo=FALSE}
-#### 2nd sequencing run
+#### 2nd sequencing run for BS1
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS1995_BS1"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -148,7 +148,7 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS19
 
 
 ```{r, echo=FALSE}
-#### 3rd sequencing run
+#### 3rd sequencing run for BS1
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2051_BS1"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -195,10 +195,9 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS20
 ```
 
 
-BS2 site field trials 2020-2021
-
+BS2 site field trials 2020-2021; 4 sequencing runs total
 ```{r, echo=FALSE}
-#### 1st sequencing run
+#### 1st sequencing run for BS2
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2107_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -246,7 +245,7 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS21
 
 
 ```{r, echo=FALSE}
-#### 2nd sequencing run
+#### 2nd sequencing run for BS2
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2172_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -294,7 +293,7 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS21
 
 
 ```{r, echo=FALSE}
-#### 3rd sequencing run
+#### 3rd sequencing run for BS2
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2211_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -342,7 +341,7 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS22
 
 
 ```{r, echo=FALSE}
-#### 4th sequencing run
+#### 4th sequencing run for BS2
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2408_BS2"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -390,9 +389,9 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS24
 
 
 
-BS3 and MK-48 sites field trials 2021-2022
+BS3 and MK-48 sites field trials 2021-2022; 2 sequencing runs to date
 ```{r, echo=FALSE}
-#### 1st sequencing run
+#### 1st sequencing run for BS3 and MK48
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -440,7 +439,7 @@ saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS26
 ```
 
 ```{r, echo=FALSE}
-#### 2nd sequencing run
+#### 2nd sequencing run for BS3 and MK48
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3"
 list.files(path)
 fnFs <- sort(list.files(path, pattern="_R1_cut.fastq.gz", full.names = TRUE))
@@ -506,20 +505,11 @@ st.all <- mergeSequenceTables(st1, st2, st3, st4, st5, st6, st7, st8, st9, repea
 seqtab.nochim <- removeBimeraDenovo(st.all, method="consensus", multithread=TRUE, verbose=TRUE)
 dim(seqtab.nochim)
 sum(seqtab.nochim)/sum(st.all)
+# SAVE the non-chimeric sequence variant table SO YOU DON'T HAVE TO REPEAT ALL OF THE ABOVE STEPS
+saveRDS(seqtab.nochim, file="~/Documents/Github/McH1-7_Probiotics_Field_Trials/probiotics.rds")
 
 
-
-##### combine just BS3 runs
-st8 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3/seqtab.rds")
-st9 <- readRDS("~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3/seqtab.rds")
-st.bs3 <- mergeSequenceTables(st8, st9, repeats="sum") # You may get the message "Duplicated sample names detected in the sequence table row names." to let you know that there are duplicate names across samples - it is not an error, just a message. If you have run a sample on more than one sequencing run, the ASV counts will be added together.
-#Remove chimeric sequences:
-seqtab.nochim.bs3 <- removeBimeraDenovo(st.bs3, method="consensus", multithread=TRUE, verbose=TRUE)
-dim(seqtab.nochim.bs3)
-sum(seqtab.nochim.bs3)/sum(st.bs3)
-saveRDS(seqtab.nochim.bs3, file="~/Documents/Github/McH1-7_Probiotics_Field_Trials/probiotics_bs3.rds")
-
-# Combine read stats from 9 runs and add chimera summary - This does not combine duplicate rows from repeated samples.
+# Combine read stats from all runs and add chimera summary - This does not combine duplicate rows from repeated samples.
 stat1 <- read.table("dada_read_stats_NS1968R_BS1.txt",sep="\t",header=TRUE, row.names=1)
 stat2 <- read.table("dada_read_stats_NS1995_BS1.txt",sep="\t",header=TRUE, row.names=1)
 stat3 <- read.table("dada_read_stats_NS2051_BS1.txt",sep="\t",header=TRUE, row.names=1)
@@ -549,7 +539,7 @@ Make sure the taxonomy reference database is in your working directory. Keep the
 When taxonomy assignment is complete, we will use base R and phyloseq to clean up the taxonomy table. First, we will replace NAs and empty cells with the lowest taxonomy classification available. Second, we will use phyloseq to remove reads that are classified as Eukaryotes or unclassified at the domain level (ie, we are keeping only Bacteria and Archaea because that is what our primers target).
 
 ```{r, echo=FALSE}
-taxa <- assignTaxonomy(seqtab.nochim.bs3, "~/Documents/Github/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
+taxa <- assignTaxonomy(seqtab.nochim, "~/Documents/Github/silva_nr99_v138.1_train_set.fa.gz", multithread=TRUE)
 # FIX the NAs in the taxa table
 taxon <- as.data.frame(taxa,stringsAsFactors=FALSE)
 taxon$Phylum[is.na(taxon$Phylum)] <- taxon$Kingdom[is.na(taxon$Phylum)]
@@ -557,12 +547,12 @@ taxon$Class[is.na(taxon$Class)] <- taxon$Phylum[is.na(taxon$Class)]
 taxon$Order[is.na(taxon$Order)] <- taxon$Class[is.na(taxon$Order)]
 taxon$Family[is.na(taxon$Family)] <- taxon$Order[is.na(taxon$Family)]
 taxon$Genus[is.na(taxon$Genus)] <- taxon$Family[is.na(taxon$Genus)]
-write.table(taxon,"silva_taxa_table_bs3.txt",sep="\t",col.names=NA)
-write.table(seqtab.nochim.bs3, "silva_otu_table_bs3.txt",sep="\t",col.names=NA)
+write.table(taxon,"silva_taxa_table.txt",sep="\t",col.names=NA)
+write.table(seqtab.nochim.bs3, "silva_otu_table.txt",sep="\t",col.names=NA)
 # Create phyloseq object from otu and taxonomy tables from dada2, along with the sample metadata.
-otu <- read.table("silva_otu_table_bs3.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_taxa_table_bs3.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_BS3.txt",sep="\t",header=T,row.names=1)
+otu <- read.table("silva_otu_table.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_17May.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
@@ -570,7 +560,7 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #11379 taxa and 229 samples
+ps 
 # remove chloroplasts and mitochondria and Eukaryota
 get_taxa_unique(ps, "Family")
 get_taxa_unique(ps, "Order")
@@ -582,18 +572,18 @@ ps <- subset_taxa(ps, Kingdom !="NA")
 get_taxa_unique(ps, "Family")
 get_taxa_unique(ps, "Order") 
 get_taxa_unique(ps, "Kingdom")
-ps #11013 taxa and 229 samples
+ps
 
 # Now export cleaned otu and taxa tables from phyloseq for future reference
 otu = as(otu_table(ps), "matrix")
 taxon = as(tax_table(ps), "matrix")
 metadata = as(sample_data(ps), "matrix")
-write.table(otu,"silva_nochloronomito_otu_table_bs3.txt",sep="\t",col.names=NA)
-write.table(taxon,"silva_nochloronomito_taxa_table_bs3.txt",sep="\t",col.names=NA)
+write.table(otu,"silva_nochloronomito_otu_table.txt",sep="\t",col.names=NA)
+write.table(taxon,"silva_nochloronomito_taxa_table.txt",sep="\t",col.names=NA)
 # export ASV table as relative abundance
 ps_ra<-transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
 otu_ra = as(otu_table(ps_ra), "matrix")
-write.table(otu_ra,"silva_nochloronomito_otu_table_bs3_RA.txt",sep="\t",col.names=NA)
+write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA)
 ```
 
 Now, time to explore the data.
@@ -607,30 +597,30 @@ Now, time to explore the data.
 #TAX = tax_table(taxon)
 #sampledata = sample_data(samples)
 #ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),sample_data(samples),tax_table(taxon))
-ps #11013 taxa and 229 samples
-get_taxa_unique(ps, "Order") #335
-get_taxa_unique(ps, "Class") #140
+ps 
+get_taxa_unique(ps, "Order") 
+get_taxa_unique(ps, "Class") 
 ps5<-filter_taxa(ps, function(x) mean(x) >5, TRUE)
-ntaxa(ps5) #227
+ntaxa(ps5) 
 ps10<-filter_taxa(ps, function(x) mean(x) >10, TRUE)
-ntaxa(ps10) #127
-get_taxa_unique(ps, "Genus") #1248
-get_taxa_unique(ps5, "Genus") #130
-get_taxa_unique(ps10, "Genus") #80
+ntaxa(ps10) 
+get_taxa_unique(ps, "Genus") 
+get_taxa_unique(ps5, "Genus") 
+get_taxa_unique(ps10, "Genus") 
 
 # Now export filtered otu and taxa tables from phyloseq for future reference after removing sample blanks
-ps5 #227 taxa and 229 samples
+ps5 
 ps5 = subset_samples(ps5, tag != "blank")
-ps5 #227 taxa and 221 samples
+ps5 
 otu_ps5 = as(otu_table(ps5), "matrix")
 taxon_ps5 = as(tax_table(ps5), "matrix")
 metadata = as(sample_data(ps5), "matrix")
-write.table(otu_ps5,"silva_nochloronomito_otu_table_bs3_ps5.txt",sep="\t",col.names=NA)
-write.table(taxon_ps5,"silva_nochloronomito_taxa_tabl_bs3_ps5.txt",sep="\t",col.names=NA)
-write.table(metadata,"metadata_bs3_noblanks.txt",sep="\t",col.names=NA)
+write.table(otu_ps5,"silva_nochloronomito_otu_table_ps5.txt",sep="\t",col.names=NA)
+write.table(taxon_ps5,"silva_nochloronomito_taxa_table_ps5.txt",sep="\t",col.names=NA)
+write.table(metadata,"metadata_noblanks.txt",sep="\t",col.names=NA)
 ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
 otu_ps5_ra = as(otu_table(ps5_ra), "matrix")
-write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_bs3_ps5_RA.txt",sep="\t",col.names=NA)
+write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_ps5_RA.txt",sep="\t",col.names=NA)
 
 #ps10 = subset_samples(ps10, TagID != "blank")
 #ps10
@@ -644,9 +634,9 @@ write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_bs3_ps5_RA.txt",sep="\t",
 
 ```{r, echo=FALSE}
 # use an ASV table that has been filtered to remove low-abundance ASVs, no blanks
-otu <- read.table("silva_nochloronomito_otu_table_bs3_ps5.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_tabl_bs3_ps5.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_bs3_noblanks.txt",sep="\t",header=T,row.names=1)
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_tabl_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
 
 # First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
 # Also transposing here, need samples as rows
@@ -673,6 +663,11 @@ theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor =
 samples$month<-factor(samples$month,levels=c("July","Aug","Nov"))
 samples$treatment <- factor(samples$treatment, levels = c("none","control paste and bag","probiotic paste and bag","resistant"))
 treatcolors <- c("none"="#999999","control paste and bag"="#000066","probiotic paste and bag"="#993300","resistant"="#000000")
+
+samples$Date<-factor(samples$Date,levels=c("A","O","J"))
+samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
+
 
 pdf("PCA-bs3.pdf",bg ="white",width=8.5)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$treatment,shape=samples$month))
