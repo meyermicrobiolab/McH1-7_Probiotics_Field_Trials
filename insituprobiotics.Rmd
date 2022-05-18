@@ -548,7 +548,7 @@ taxon$Order[is.na(taxon$Order)] <- taxon$Class[is.na(taxon$Order)]
 taxon$Family[is.na(taxon$Family)] <- taxon$Order[is.na(taxon$Family)]
 taxon$Genus[is.na(taxon$Genus)] <- taxon$Family[is.na(taxon$Genus)]
 write.table(taxon,"silva_taxa_table.txt",sep="\t",col.names=NA)
-write.table(seqtab.nochim.bs3, "silva_otu_table.txt",sep="\t",col.names=NA)
+write.table(seqtab.nochim, "silva_otu_table.txt",sep="\t",col.names=NA)
 # Create phyloseq object from otu and taxonomy tables from dada2, along with the sample metadata.
 otu <- read.table("silva_otu_table.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
