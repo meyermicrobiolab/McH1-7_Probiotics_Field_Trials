@@ -572,7 +572,7 @@ ps <- subset_taxa(ps, Kingdom !="NA")
 get_taxa_unique(ps, "Family")
 get_taxa_unique(ps, "Order") 
 get_taxa_unique(ps, "Kingdom")
-ps #31624 taxa and 592 samples
+ps #31624 taxa and 592 samples; 594 in metadata
 
 # Now export cleaned otu and taxa tables from phyloseq for future reference
 otu = as(otu_table(ps), "matrix")
@@ -589,29 +589,21 @@ write.table(otu_ra,"silva_nochloronomito_otu_table_RA.txt",sep="\t",col.names=NA
 Now, time to explore the data.
 
 ```{r, echo=FALSE}
-#otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
-#taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
-#samples<-read.table("metadata.txt",sep="\t",header=T,row.names=1)
-#OTU = otu_table(otu, taxa_are_rows=FALSE)
-#taxon<-as.matrix(taxon)
-#TAX = tax_table(taxon)
-#sampledata = sample_data(samples)
-#ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),sample_data(samples),tax_table(taxon))
-ps 
-get_taxa_unique(ps, "Order") 
-get_taxa_unique(ps, "Class") 
+ps #31624 taxa and 592 samples; 594 in metadata
+get_taxa_unique(ps, "Order") #469
+get_taxa_unique(ps, "Class") #195
 ps5<-filter_taxa(ps, function(x) mean(x) >5, TRUE)
-ntaxa(ps5) 
+ntaxa(ps5) #456
 ps10<-filter_taxa(ps, function(x) mean(x) >10, TRUE)
-ntaxa(ps10) 
-get_taxa_unique(ps, "Genus") 
-get_taxa_unique(ps5, "Genus") 
-get_taxa_unique(ps10, "Genus") 
+ntaxa(ps10) #258
+get_taxa_unique(ps, "Genus") #2000
+get_taxa_unique(ps5, "Genus") #219
+get_taxa_unique(ps10, "Genus") #141
 
 # Now export filtered otu and taxa tables from phyloseq for future reference after removing sample blanks
-ps5 
+ps5 #456 taxa and 592 samples
 ps5 = subset_samples(ps5, tag != "blank")
-ps5 
+ps5 #456 taxa and 581 samples
 otu_ps5 = as(otu_table(ps5), "matrix")
 taxon_ps5 = as(tax_table(ps5), "matrix")
 metadata = as(sample_data(ps5), "matrix")
@@ -621,13 +613,6 @@ write.table(metadata,"metadata_noblanks.txt",sep="\t",col.names=NA)
 ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
 otu_ps5_ra = as(otu_table(ps5_ra), "matrix")
 write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_ps5_RA.txt",sep="\t",col.names=NA)
-
-#ps10 = subset_samples(ps10, TagID != "blank")
-#ps10
-#otu_ps10 = as(otu_table(ps10), "matrix")
-#taxon_ps10 = as(tax_table(ps10), "matrix")
-#write.table(otu_ps10,"silva_nochloronomito_otu_table_ps10.txt",sep="\t",col.names=NA)
-#write.table(taxon_ps10,"silva_nochloronomito_taxa_table_ps10.txt",sep="\t",col.names=NA)
 ```
 
 ## Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components
@@ -635,9 +620,16 @@ write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_ps5_RA.txt",sep="\t",col.
 ```{r, echo=FALSE}
 # use an ASV table that has been filtered to remove low-abundance ASVs, no blanks
 otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_tabl_ps5.txt",sep="\t",header=TRUE,row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
 samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
-
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps #456 taxa and 581 samples
 # First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
 # Also transposing here, need samples as rows
 d.czm <- cmultRepl(t(otu), method="CZM", label=0)
@@ -660,16 +652,12 @@ screeplot(d.pcx)
 df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
 
-samples$month<-factor(samples$month,levels=c("July","Aug","Nov"))
-samples$treatment <- factor(samples$treatment, levels = c("none","control paste and bag","probiotic paste and bag","resistant"))
-treatcolors <- c("none"="#999999","control paste and bag"="#000066","probiotic paste and bag"="#993300","resistant"="#000000")
-
-samples$Date<-factor(samples$Date,levels=c("A","O","J"))
-samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
-treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
+samples$month<-factor(samples$month,levels=c("Jan","May","July","Aug","Sept","Oct","Nov"))
+samples$treatment <- factor(samples$treatment, levels = c("none","control bag","control paste","control paste and bag","probiotic bag","probiotic paste","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","control paste and bag"="#000066","probiotic bag"="#E69F00","probiotic paste"="#D55E00","probiotic paste and bag"="#993300","resistant"="#000000")
 
 
-pdf("PCA-bs3.pdf",bg ="white",width=8.5)
+pdf("PCA.pdf",bg ="white",width=8.5)
 p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$treatment,shape=samples$month))
 p<-p+geom_point(size=5)+
   theme(axis.title = element_text(size=14))+
@@ -677,18 +665,61 @@ p<-p+geom_point(size=5)+
   theme(legend.title = element_text(size=14))+
   theme(legend.text = element_text(size=12))+
   scale_fill_manual(values=treatcolors)+
-  scale_shape_manual(values=c(21,22,24))+
+  scale_shape_manual(values=c(21,0,22,23,1,24,25))+
   guides(fill = guide_legend(override.aes=list(shape=21)))
-p + labs(x=xlab, y=ylab, fill="Treatment") + coord_fixed()
+p + labs(x=xlab, y=ylab, fill="Treatment",shape="Month") + coord_fixed()
+dev.off()
+
+bs<-subset_samples(ps, site!="Mk48-5")
+bs  #456 taxa and 480 samples
+otu_bs = as(otu_table(bs), "matrix")
+taxon_bs = as(tax_table(bs), "matrix")
+meta_bs = as(sample_data(bs), "matrix")
+write.table(otu_bs,"silva_nochloronomito_otu_table_bs.txt",sep="\t",col.names=NA)
+write.table(taxon_bs,"silva_nochloronomito_taxa_table_bs.txt",sep="\t",col.names=NA)
+write.table(meta_bs,"metadata_bs.txt",sep="\t",col.names=NA)
+otu <- read.table("silva_nochloronomito_otu_table_bs.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_bs.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_bs.txt",sep="\t",header=T,row.names=1)
+d.czm <- cmultRepl(t(otu), method="CZM", label=0)
+d.clr <- codaSeq.clr(d.czm)
+E.clr <- t(d.clr)
+d.pcx <- prcomp(E.clr)
+pc1 <- round(d.pcx$sdev[1]^2/sum(d.pcx$sdev^2),2)
+pc2 <- round(d.pcx$sdev[2]^2/sum(d.pcx$sdev^2),2)
+xlab <- paste("PC1: ", pc1, sep="")
+ylab <- paste("PC2: ", pc2, sep="")
+#biplot(d.pcx, cex=c(0.6,0.4), var.axes=F,scale=1, xlab=xlab, ylab=ylab)
+summary(d.pcx)
+str(d.pcx)
+screeplot(d.pcx)
+# replot PCA with ggplot2 (showing samples only)
+df_out <- as.data.frame(d.pcx$x)
+theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
+samples$month<-factor(samples$month,levels=c("Jan","July","Aug","Oct","Nov"))
+samples$treatment <- factor(samples$treatment, levels = c("none","control bag","control paste","control paste and bag","probiotic bag","probiotic paste","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","control paste and bag"="#000066","probiotic bag"="#E69F00","probiotic paste"="#D55E00","probiotic paste and bag"="#993300","resistant"="#000000")
+
+pdf("PCA_BS.pdf",bg ="white",width=8.5)
+p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$treatment,shape=samples$month))
+p<-p+geom_point(size=5)+
+  theme(axis.title = element_text(size=14))+
+  theme(axis.text=element_text(size=12))+
+  theme(legend.title = element_text(size=14))+
+  theme(legend.text = element_text(size=12))+
+  scale_fill_manual(values=treatcolors)+
+  scale_shape_manual(values=c(21,22,23,24,25))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))
+p + labs(x=xlab, y=ylab, fill="Treatment",shape="Month") + coord_fixed()
 dev.off()
 
 
 ## Use phyloseq/vegan to perform ANOSIM/PERMANOVA using Aitchison distance
 
 # create a phyloseq object with the ASV table that has been filtered to remove low-abundance ASVs, no blanks
-otu <- read.table("silva_nochloronomito_otu_table_bs3_ps5.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_tabl_bs3_ps5.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_bs3_noblanks.txt",sep="\t",header=T,row.names=1)
+otu <- read.table("silva_nochloronomito_otu_table_bs.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_bs.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_bs.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
@@ -696,25 +727,31 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #227 taxa and 221 samples
+ps #456 taxa and 480 samples
 
 # set metadata as factors for anosim/permanova
 treat<-as.character(samples$treatment)
-date<-as.character(samples$month)
+month<-as.character(samples$month)
 health<-as.character(samples$condition)
 tag<-as.character(samples$tag)
+year<-as.character(samples$year)
+site<-as.character(samples$site)
 
 # permanova between groups using Aitchison distance
 dist.clr <- dist(E.clr)
-perm<-adonis(dist.clr~treat*date,as(sample_data(ps),"data.frame"))
+perm<-adonis(dist.clr~treat*month,as(sample_data(ps),"data.frame"))
 print(perm)
 perm<-adonis(dist.clr~treat*health,as(sample_data(ps),"data.frame"))
 print(perm)
-perm<-adonis(dist.clr~health*date,as(sample_data(ps),"data.frame"))
+perm<-adonis(dist.clr~health*month,as(sample_data(ps),"data.frame"))
 print(perm)
-perm<-adonis(dist.clr~tag*date,as(sample_data(ps),"data.frame"))
+perm<-adonis(dist.clr~tag*month,as(sample_data(ps),"data.frame"))
 print(perm)
 perm<-adonis(dist.clr~tag*health,as(sample_data(ps),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~health*year,as(sample_data(ps),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~treat*site,as(sample_data(ps),"data.frame"))
 print(perm)
 
 # anosim between groups using Aitchison distance
@@ -756,18 +793,14 @@ mod3 <-betadisper(dist.clr, health)
 anova(mod3)
 #boxplots
 plot(mod3)
+pdf("distancetocentroid_health.pdf",width=8.5)
 boxplot(mod3)
+dev.off()
 ```
 
 
 
-
-
-
-Just BS3 site
-
 ```{r, echo=FALSE}
-# create a phyloseq object with the ASV table that has been filtered to remove low-abundance ASVs, no blanks
 otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
 samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
@@ -775,12 +808,10 @@ OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
 sampledata = sample_data(samples)
-ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
-               sample_data(samples), 
-               tax_table(taxon))
-ps5 #347 taxa and 388 samples
-bs3<-subset_samples(ps5, site=="BS3")
-bs3  #347 taxa and 219 samples
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),sample_data(samples),tax_table(taxon))
+ps #456 taxa and 581 samples
+bs3<-subset_samples(ps, site=="BS3")
+bs3  #456 taxa and 221 samples
 otu_bs3 = as(otu_table(bs3), "matrix")
 taxon_bs3 = as(tax_table(bs3), "matrix")
 meta_bs3 = as(sample_data(bs3), "matrix")
@@ -790,100 +821,16 @@ write.table(meta_bs3,"metadata_bs3.txt",sep="\t",col.names=NA)
 otu <- read.table("silva_nochloronomito_otu_table_bs3.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_nochloronomito_taxa_table_bs3.txt",sep="\t",header=TRUE,row.names=1)
 samples<-read.table("metadata_bs3.txt",sep="\t",header=T,row.names=1)
-
-# First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
-# Also transposing here, need samples as rows
-d.czm <- cmultRepl(t(otu), method="CZM", label=0)
-# Perform the center-log-ratio (CLR) transformation 
-d.clr <- codaSeq.clr(d.czm)
-# transpose matrix of CLR transformed data for ordination and dendrogram
-E.clr <- t(d.clr)
-# plot compositional PCA biplot (perform a singular value decomposition)
-d.pcx <- prcomp(E.clr)
-# calculate percent variance explained for the axis labels
-pc1 <- round(d.pcx$sdev[1]^2/sum(d.pcx$sdev^2),2)
-pc2 <- round(d.pcx$sdev[2]^2/sum(d.pcx$sdev^2),2)
-xlab <- paste("PC1: ", pc1, sep="")
-ylab <- paste("PC2: ", pc2, sep="")
-#biplot(d.pcx, cex=c(0.6,0.4), var.axes=F,scale=1, xlab=xlab, ylab=ylab)
-summary(d.pcx)
-str(d.pcx)
-screeplot(d.pcx)
-# replot PCA with ggplot2 (showing samples only)
-df_out <- as.data.frame(d.pcx$x)
-theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
-
-samples$Date<-factor(samples$Date,levels=c("A","O","J"))
-samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
-treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
-
-pdf("PCA_dd.pdf",bg = "white",width=8.5)
-p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$Treatment,shape=samples$Date))
-p<-p+geom_point(size=5)+
-  theme(axis.title = element_text(size=14))+
-  theme(axis.text=element_text(size=12))+
-  theme(legend.title = element_text(size=14))+
-  theme(legend.text = element_text(size=12))+
-  scale_fill_manual(values=treatcolors)+
-  scale_shape_manual(values=c(21,22,24))+
-  guides(fill = guide_legend(override.aes=list(shape=21)))
-p + labs(x=xlab, y=ylab, fill="Treatment", shape="Date") + coord_fixed()
-dev.off()
-
-# set metadata as factors for anosim/permanova
-treat<-as.character(samples$Treatment)
-date<-as.character(samples$Date)
-tag<-as.character(samples$TagID)
-
-# permanova between groups using Aitchison distance
-dist.clr <- dist(E.clr)
-perm<-adonis(dist.clr~treat*date,as(sample_data(dd),"data.frame"))
-print(perm)
-perm<-adonis(dist.clr~treat*tag,as(sample_data(dd),"data.frame"))
-print(perm)
-perm<-adonis(dist.clr~tag*date,as(sample_data(dd),"data.frame"))
-print(perm)
-
-```
-
-Let's try just AH, with and without treatment
-
-
-```{r, echo=FALSE}
-# create a phyloseq object with the ASV table that has been filtered to remove low-abundance ASVs, no blanks
-otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
 sampledata = sample_data(samples)
-ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
-               sample_data(samples), 
-               tax_table(taxon))
-ps5 # 736 taxa, 194 samples
-hd<-subset_samples(ps5, HealthState=="Apparently Healthy")
-hd  # 736 taxa, 91 samples
-otu_hd = as(otu_table(hd), "matrix")
-taxon_hd = as(tax_table(hd), "matrix")
-meta_hd = as(sample_data(hd), "matrix")
-write.table(otu_hd,"silva_nochloronomito_otu_table_hd.txt",sep="\t",col.names=NA)
-write.table(taxon_hd,"silva_nochloronomito_taxa_table_hd.txt",sep="\t",col.names=NA)
-write.table(meta_hd,"metadata_hd.txt",sep="\t",col.names=NA)
-otu <- read.table("silva_nochloronomito_otu_table_hd.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table_hd.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_hd.txt",sep="\t",header=T,row.names=1)
-
-# First, replace 0 values with an estimate (because normalization is taking log, can't have 0)
-# Also transposing here, need samples as rows
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),sample_data(samples),tax_table(taxon))
+ps #456 taxa and 221 samples
 d.czm <- cmultRepl(t(otu), method="CZM", label=0)
-# Perform the center-log-ratio (CLR) transformation 
 d.clr <- codaSeq.clr(d.czm)
-# transpose matrix of CLR transformed data for ordination and dendrogram
 E.clr <- t(d.clr)
-# plot compositional PCA biplot (perform a singular value decomposition)
 d.pcx <- prcomp(E.clr)
-# calculate percent variance explained for the axis labels
 pc1 <- round(d.pcx$sdev[1]^2/sum(d.pcx$sdev^2),2)
 pc2 <- round(d.pcx$sdev[2]^2/sum(d.pcx$sdev^2),2)
 xlab <- paste("PC1: ", pc1, sep="")
@@ -895,13 +842,12 @@ screeplot(d.pcx)
 # replot PCA with ggplot2 (showing samples only)
 df_out <- as.data.frame(d.pcx$x)
 theme_set(theme_bw()+theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank()))
+samples$month<-factor(samples$month,levels=c("July","Aug","Nov"))
+samples$treatment <- factor(samples$treatment, levels = c("none","control paste and bag","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control paste and bag"="#000066","probiotic paste and bag"="#993300","resistant"="#000000")
 
-samples$Date<-factor(samples$Date,levels=c("A","O","J"))
-samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
-treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
-
-pdf("PCA_hd.pdf",bg = "white",width=8.5)
-p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$Treatment,shape=samples$Date))
+pdf("PCA_BS3.pdf",bg ="white",width=8.5)
+p<-ggplot(df_out,aes(x=PC1,y=PC2,fill=samples$treatment,shape=samples$month))
 p<-p+geom_point(size=5)+
   theme(axis.title = element_text(size=14))+
   theme(axis.text=element_text(size=12))+
@@ -910,27 +856,10 @@ p<-p+geom_point(size=5)+
   scale_fill_manual(values=treatcolors)+
   scale_shape_manual(values=c(21,22,24))+
   guides(fill = guide_legend(override.aes=list(shape=21)))
-p + labs(x=xlab, y=ylab, fill="Treatment", shape="Date") + coord_fixed()
+p + labs(x=xlab, y=ylab, fill="Treatment",shape="Month") + coord_fixed()
 dev.off()
-
-# set metadata as factors for anosim/permanova
-treat<-as.character(samples$Treatment)
-date<-as.character(samples$Date)
-tag<-as.character(samples$TagID)
-treated<-as.character(samples$Treated)
-
-# permanova between groups using Aitchison distance
-dist.clr <- dist(E.clr)
-perm<-adonis(dist.clr~treat*date,as(sample_data(dd),"data.frame"))
-print(perm)
-perm<-adonis(dist.clr~treat*tag,as(sample_data(dd),"data.frame"))
-print(perm)
-perm<-adonis(dist.clr~tag*date,as(sample_data(dd),"data.frame"))
-print(perm)
-perm<-adonis(dist.clr~treated*date,as(sample_data(dd),"data.frame"))
-print(perm)
-
 ```
+
 
 
 
@@ -947,12 +876,12 @@ sampledata = sample_data(samples)
 ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps5 #736 taxa and 194 samples
+ps5 #456 taxa and 581 samples
 ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
-ps5_ra #736 taxa and 194 samples
-get_taxa_unique(ps5_ra, "Order") #100
-get_taxa_unique(ps5_ra, "Class") #39
-n <- 39
+ps5_ra #456 taxa and 581 samples
+get_taxa_unique(ps5_ra, "Order") #67
+get_taxa_unique(ps5_ra, "Class") #23
+n <- 23
 palette <- distinctColorPalette(n)
 #you can rerun the previous line to get a new selection of colors
 # keep list of colors used in palette that is most appealing
@@ -960,16 +889,14 @@ sink("palette.txt")
 print(palette)
 sink()
 
-#treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00", "probiotic paste"="#D55E00")
-#condcolors <- c("Healthy"="coral", "Apparently Healthy"="maroon", "Disease"="magenta4")
-samples$Date<-factor(samples$Date,levels=c("A","O","J"))
-samples$Treatment <- factor(samples$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
-samples$HealthState<-factor(samples$HealthState,levels=c("Healthy","Apparently Healthy","Diease"))
+samples$month<-factor(samples$month,levels=c("Jan","May","July","Aug","Sept","Oct","Nov"))
+samples$treatment <- factor(samples$treatment, levels = c("none","control bag","control paste","control paste and bag","probiotic bag","probiotic paste","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","control paste and bag"="#000066","probiotic bag"="#E69F00","probiotic paste"="#D55E00","probiotic paste and bag"="#993300","resistant"="#000000")
 
 pdf("barchart_Class.pdf",width=13)
 p1=plot_bar(ps5_ra, fill="Class")+
   geom_bar(aes(fill=Class), stat="identity",position="stack")+
-  facet_grid(.~HealthState,scales="free",space="free")+
+  facet_grid(.~treatment,scales="free",space="free")+
   theme(strip.text=element_text(face="bold"))+
   theme(axis.text.x=element_text(angle = 90))+
   scale_fill_manual(values=palette)+
@@ -984,13 +911,15 @@ dev.off()
 
 
 ```{r, echo=FALSE}
-Pseudoalt<-subset_taxa(ps5_ra, Genus=="Pseudoalteromonas")
-Pseudoalt #10 taxa and 194 samples
+bs3<-subset_samples(ps5_ra, site=="BS3")
+bs3 #456 taxa and 221 samples
+Pseudoalt<-subset_taxa(bs3, Genus=="Pseudoalteromonas")
+Pseudoalt #6 taxa and 221 samples
 otu.Pseudoalt = as(otu_table(Pseudoalt), "matrix")
 otu.Pseudoalt<-as.data.frame(otu.Pseudoalt)
 otu.Pseudoalt<-rownames_to_column(otu.Pseudoalt,var="Sample")
 #export ASV sequences for supplemental table
-#write.table(otu.Pseudoalt,"Pseudoalteromonas_ASVs.txt",sep="\t",col.names=NA)
+write.table(otu.Pseudoalt,"Pseudoalteromonas_ASVs.txt",sep="\t",col.names=NA)
 
 names(otu.Pseudoalt)[2]<-"ASV1"
 names(otu.Pseudoalt)[3]<-"ASV2"
@@ -998,28 +927,28 @@ names(otu.Pseudoalt)[4]<-"ASV3"
 names(otu.Pseudoalt)[5]<-"ASV4"
 names(otu.Pseudoalt)[6]<-"ASV5"
 names(otu.Pseudoalt)[7]<-"ASV6"
-names(otu.Pseudoalt)[8]<-"ASV7"
-names(otu.Pseudoalt)[9]<-"ASV8"
-names(otu.Pseudoalt)[10]<-"ASV9"
-names(otu.Pseudoalt)[11]<-"ASV10"
 
 meta.Pseudoalt = as(sample_data(Pseudoalt), "matrix")
 meta.Pseudoalt<-as.data.frame(meta.Pseudoalt)
 meta.Pseudoalt<-rownames_to_column(meta.Pseudoalt,var="Sample")
 otu.Pseudoalt.meta<-merge(meta.Pseudoalt,otu.Pseudoalt,"Sample")
-otu_long_p<-reshape2::melt(otu.Pseudoalt.meta,id.vars=c("Sample","TagID","HealthState","Treatment","Treated","AllPresent","Status","Date"),variable.name="ASV",value.name="Proportion")
+otu_long_p<-reshape2::melt(otu.Pseudoalt.meta,id.vars=c("Sample","tag","treatment","site","species","condition","treated","month","year"),variable.name="ASV",value.name="Proportion")
 
 #PaletteWoodsHole bog and rocky_beach
-pseudoalt_colors<-c("ASV1"="#AC7070","ASV2"="#D6D9DA","ASV3"="#33291B","ASV4"="#C5C7C7","ASV5"="#937771","ASV6"="#5A4A35","ASV7"="#476AA7","ASV8"="#716347","ASV9"="#7299CE","ASV10"="#A2937A")
+pseudoalt_colors<-c("ASV1"="#AC7070","ASV2"="#D6D9DA","ASV3"="#33291B","ASV4"="#C5C7C7","ASV5"="#937771","ASV6"="#5A4A35")
+
+samples$treatment <- factor(samples$treatment, levels = c("none","control paste and bag","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control paste and bag"="#000066","probiotic paste and bag"="#993300","resistant"="#000000")
+
 
 # bubble plot, first need to detach plyr (or it overrides dplyr operations and the group_by doesn't work); detach Rmisc before plyr or it won't detach plyr
 detach(package:Rmisc)
 detach(package:plyr)
-otu_long_p_ASV <- otu_long_p %>% group_by(Treatment,ASV) %>% summarize(ASV_mean=mean(Proportion))
-otu_long_p_ASV$Treatment <- factor(otu_long_p_ASV$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
+otu_long_p_ASV <- otu_long_p %>% group_by(treatment,ASV) %>% summarize(ASV_mean=mean(Proportion))
+otu_long_p_ASV$treatment <- factor(otu_long_p_ASV$treatment, levels = c("none","control paste and bag","probiotic paste and bag","resistant"))
 
-pdf("Pseudoalteromonas_ASVs.pdf",bg = "white",width=8,height=5)
-p1<-ggplot(otu_long_p_ASV,aes(ASV,Treatment,color=ASV))+
+pdf("Pseudoalteromonas_ASVs_BS3.pdf",bg = "white",width=8,height=5)
+p1<-ggplot(otu_long_p_ASV,aes(ASV,treatment,color=ASV))+
   geom_point(aes(size=ASV_mean))+
   theme_bw()+
   scale_size(range = c(0.5,10),name="Mean Relative Abundance")+
@@ -1037,31 +966,30 @@ dev.off()
 ## Plot all Pseudoalteromonas ASVs by Treatment
 
 ```{r, echo=FALSE}
-otu_long_p$Treatment <- factor(otu_long_p$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
-otu_long_p$Date<-factor(otu_long_p$Date,levels=c("A","O","J"))
-labels <- c(A = "August", O = "October", J="January")
-otu_long_p$HealthState<-factor(otu_long_p$HealthState,levels=c("Healthy","Apparently Healthy","Disease"))
-condcolors <- c("Healthy"="#E69F00", "Apparently Healthy"="#999999", "Disease"="#000000")
+otu_long_p$treatment <- factor(otu_long_p$treatment, levels = c("resistant","none","control paste and bag","probiotic paste and bag"))
+otu_long_p$month<-factor(otu_long_p$month,levels=c("July","Aug","Nov"))
+otu_long_p$condition<-factor(otu_long_p$condition,levels=c("HH","HD","DD"))
+condcolors <- c("HH"="#E69F00", "HD"="#999999", "DD"="#000000")
 
 #one-way anova
-model1<- aov(otu_long_p$Proportion~otu_long_p$Treatment)
+model1<- aov(otu_long_p$Proportion~otu_long_p$treatment)
 summary(model1)
 TukeyHSD(model1)
 
-model2<- aov(otu_long_p$Proportion~otu_long_p$Date)
+model2<- aov(otu_long_p$Proportion~otu_long_p$month)
 summary(model2)
 TukeyHSD(model2)
 
-model3<- aov(otu_long_p$Proportion~otu_long_p$HealthState)
+model3<- aov(otu_long_p$Proportion~otu_long_p$condition)
 summary(model3)
 TukeyHSD(model3)
 
-pdf("Pseudoalteromonas_byTreatment_Date.pdf",width=8,height=6)
-p2<-ggplot(otu_long_p,aes(x=Treatment,y=Proportion))+
+pdf("Pseudoalteromonas_byTreatment_Date_BS3.pdf",width=8,height=6)
+p2<-ggplot(otu_long_p,aes(x=treatment,y=Proportion))+
   geom_boxplot(outlier.shape=NA)+
   theme_bw()+
-  facet_grid(Date~.,space="free",labeller=labeller(Date = labels))+
-  geom_jitter(position=position_jitter(width=.1, height=0),aes(color=HealthState),size=3)+
+  facet_grid(month~.,space="free")+
+  geom_jitter(position=position_jitter(width=.1, height=0),aes(color=condition),size=3)+
   scale_color_manual(values=condcolors)+
   theme(axis.title.x=element_blank())+
   theme(text=element_text(size=14))+

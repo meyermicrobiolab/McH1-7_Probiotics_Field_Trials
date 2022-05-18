@@ -1,0 +1,138 @@
+
+Call:
+adonis(formula = dist.clr ~ treat * month, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+             Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+treat         7     37651  5378.7  3.9544 0.05097  0.001 ***
+month         4     58546 14636.4 10.7606 0.07925  0.001 ***
+treat:month   9     18236  2026.3  1.4897 0.02469  0.004 ** 
+Residuals   459    624327  1360.2         0.84510           
+Total       479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+
+Call:
+adonis(formula = dist.clr ~ treat * health, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+              Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+treat          7     37651  5378.7  3.8630 0.05097  0.001 ***
+health         2     45456 22727.9 16.3232 0.06153  0.001 ***
+treat:health  10     15161  1516.1  1.0889 0.02052  0.212    
+Residuals    460    640492  1392.4         0.86698           
+Total        479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+
+
+Call:
+adonis(formula = dist.clr ~ health * month, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+              Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+health         2     46626 23313.2 18.1277 0.06311  0.001 ***
+month          4     77526 19381.4 15.0704 0.10494  0.001 ***
+health:month   8     16590  2073.8  1.6125 0.02246  0.002 ** 
+Residuals    465    598018  1286.1         0.80949           
+Total        479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+
+
+Call:
+adonis(formula = dist.clr ~ tag * month, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+           Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+tag         1     11673 11672.7  8.6711 0.01580  0.001 ***
+month       4     72347 18086.7 13.4358 0.09793  0.001 ***
+tag:month   4     22048  5512.0  4.0946 0.02984  0.001 ***
+Residuals 470    632692  1346.2         0.85643           
+Total     479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+
+
+Call:
+adonis(formula = dist.clr ~ tag * health, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+tag          1     11673 11672.7  8.2249 0.01580  0.001 ***
+health       2     47044 23522.1 16.5744 0.06368  0.001 ***
+tag:health   2      7352  3676.2  2.5904 0.00995  0.003 ** 
+Residuals  474    672691  1419.2         0.91057           
+Total      479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+
+Call:
+adonis(formula = dist.clr ~ health * year, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+             Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+health        2     46626 23313.2 16.7883 0.06311  0.001 ***
+year          1     29736 29736.3 21.4137 0.04025  0.001 ***
+health:year   2      4173  2086.4  1.5024 0.00565  0.055 .  
+Residuals   474    658224  1388.7         0.89099           
+Total       479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+
+
+
+Call:
+adonis(formula = dist.clr ~ treat * site, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+treat        7     37651  5378.7  3.8477 0.05097  0.001 ***
+site         2     42386 21193.2 15.1606 0.05738  0.001 ***
+treat:site   2      4497  2248.6  1.6085 0.00609  0.035 *  
+Residuals  468    654225  1397.9         0.88557           
+Total      479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
