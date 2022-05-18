@@ -438,6 +438,7 @@ write.table(track, "dada_read_stats_NS2661_BS3.txt",sep="\t",col.names=NA)
 saveRDS(seqtab, "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2661_BS3/seqtab.rds")
 ```
 
+
 ```{r, echo=FALSE}
 #### 2nd sequencing run for BS3 and MK48
 path <- "~/Documents/Github/McH1-7_Probiotics_Field_Trials/cutadapt_NS2696_BS3"
@@ -550,6 +551,7 @@ taxon$Genus[is.na(taxon$Genus)] <- taxon$Family[is.na(taxon$Genus)]
 write.table(taxon,"silva_taxa_table.txt",sep="\t",col.names=NA)
 write.table(seqtab.nochim, "silva_otu_table.txt",sep="\t",col.names=NA)
 # Create phyloseq object from otu and taxonomy tables from dada2, along with the sample metadata.
+# reading in the otu table with almost 600 samples took 2 hours!!!
 otu <- read.table("silva_otu_table.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
 samples<-read.table("metadata_17May.txt",sep="\t",header=T,row.names=1)
@@ -615,7 +617,9 @@ otu_ps5_ra = as(otu_table(ps5_ra), "matrix")
 write.table(otu_ps5_ra,"silva_nochloronomito_otu_table_ps5_RA.txt",sep="\t",col.names=NA)
 ```
 
+
 ## Perform center-log-ratio transformation on ASVs and calculate Aitchison Distance and principal components
+All samples from all field trials, using ASV table that has been filtered to remove low-abundance ASVs, no blanks
 
 ```{r, echo=FALSE}
 # use an ASV table that has been filtered to remove low-abundance ASVs, no blanks
@@ -670,6 +674,8 @@ p<-p+geom_point(size=5)+
 p + labs(x=xlab, y=ylab, fill="Treatment",shape="Month") + coord_fixed()
 dev.off()
 
+
+### repeat for only Broward county field trials
 bs<-subset_samples(ps, site!="Mk48-5")
 bs  #456 taxa and 480 samples
 otu_bs = as(otu_table(bs), "matrix")
@@ -731,6 +737,7 @@ ps #456 taxa and 480 samples
 
 # set metadata as factors for anosim/permanova
 treat<-as.character(samples$treatment)
+treated<-as.character(samples$treated)
 month<-as.character(samples$month)
 health<-as.character(samples$condition)
 tag<-as.character(samples$tag)
@@ -753,19 +760,21 @@ perm<-adonis(dist.clr~health*year,as(sample_data(ps),"data.frame"))
 print(perm)
 perm<-adonis(dist.clr~treat*site,as(sample_data(ps),"data.frame"))
 print(perm)
+perm<-adonis(dist.clr~treated*site,as(sample_data(ps),"data.frame"))
+print(perm)
 
 # anosim between groups using Aitchison distance
 dist.clr <- dist(E.clr)
 ano.date <- anosim(dist.clr, date, permutations=999)
-pdf("anosim_date.pdf",width=8.5)
+pdf("anosim_date_bs.pdf",width=8.5)
 plot(ano.date)
 dev.off()
 ano.treat <- anosim(dist.clr, treat, permutations=999)
-pdf("anosim_treat.pdf",width=8.5)
+pdf("anosim_treat_bs.pdf",width=8.5)
 plot(ano.treat)
 dev.off()
 ano.health <- anosim(dist.clr, health, permutations=999)
-pdf("anosim_health.pdf",width=8.5)
+pdf("anosim_condition_bs.pdf",width=8.5)
 plot(ano.health)
 dev.off()
 
@@ -779,13 +788,14 @@ plot(mod)
 boxplot(mod)
 
 #calculate multivariate dispersions based on condition
-mod2 <-betadisper(dist.clr, treat)
+mod2 <-betadisper(dist.clr, treated)
 #one way anova
 anova(mod2)
 #boxplots
 plot(mod2)
+pdf("distancetocentroid_treated_bs.pdf",width=8.5)
 boxplot(mod2)
-
+dev.off()
 
 #calculate multivariate dispersions based on condition
 mod3 <-betadisper(dist.clr, health)
@@ -793,13 +803,13 @@ mod3 <-betadisper(dist.clr, health)
 anova(mod3)
 #boxplots
 plot(mod3)
-pdf("distancetocentroid_health.pdf",width=8.5)
+pdf("distancetocentroid_condition_bs.pdf",width=8.5)
 boxplot(mod3)
 dev.off()
 ```
 
 
-
+JUST BS3 site
 ```{r, echo=FALSE}
 otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
 taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
@@ -858,6 +868,67 @@ p<-p+geom_point(size=5)+
   guides(fill = guide_legend(override.aes=list(shape=21)))
 p + labs(x=xlab, y=ylab, fill="Treatment",shape="Month") + coord_fixed()
 dev.off()
+
+# set metadata as factors for anosim/permanova
+treat<-as.character(samples$treatment)
+treated<-as.character(samples$treated)
+month<-as.character(samples$month)
+health<-as.character(samples$condition)
+tag<-as.character(samples$tag)
+
+# permanova between groups using Aitchison distance
+dist.clr <- dist(E.clr)
+perm<-adonis(dist.clr~treat*month,as(sample_data(ps),"data.frame"))
+print(perm)
+perm<-adonis(dist.clr~treated*health,as(sample_data(ps),"data.frame"))
+print(perm)
+
+# anosim between groups using Aitchison distance
+dist.clr <- dist(E.clr)
+ano.treated <- anosim(dist.clr, treated, permutations=999)
+pdf("anosim_treated_bs3.pdf",width=8.5)
+plot(ano.treated)
+dev.off()
+ano.treat <- anosim(dist.clr, treat, permutations=999)
+pdf("anosim_treatment_bs3.pdf",width=8.5)
+plot(ano.treat)
+dev.off()
+ano.health <- anosim(dist.clr, health, permutations=999)
+pdf("anosim_condition_bs3.pdf",width=8.5)
+plot(ano.health)
+dev.off()
+
+## Beta Diversity Dispersions
+#calculate multivariate dispersions based on condition
+mod <-betadisper(dist.clr, month)
+#one way anova
+anova(mod)
+#boxplots
+plot(mod)
+pdf("distancetocentroid_month_bs3.pdf",width=8.5)
+boxplot(mod)
+dev.off()
+
+#calculate multivariate dispersions based on condition
+mod2 <-betadisper(dist.clr, treated)
+#one way anova
+anova(mod2)
+#boxplots
+plot(mod2)
+pdf("distancetocentroid_treated_bs3.pdf",width=8.5)
+boxplot(mod2)
+dev.off()
+
+#calculate multivariate dispersions based on condition
+mod3 <-betadisper(dist.clr, health)
+#one way anova
+anova(mod3)
+#boxplots
+plot(mod3)
+pdf("distancetocentroid_condition_bs3.pdf",width=8.5)
+boxplot(mod3)
+dev.off()
+
 ```
 
 
@@ -1031,93 +1102,6 @@ TukeyHSD(model3)
 ```
 
 
-## Plot relative abundances of Vibrio ASVs by treatment type
-
-```{r, echo=FALSE}
-vibrio<-subset_taxa(ps5_ra, Genus=="Vibrio")
-vibrio
-otu.vibrio = as(otu_table(vibrio), "matrix")
-taxon.vibrio = as(tax_table(vibrio), "matrix")
-meta.vibrio = as(sample_data(vibrio), "matrix")
-otu.vibrio<-as.data.frame(otu.vibrio)
-otu.vibrio<-rownames_to_column(otu.vibrio,var="Sample")
-#export ASV sequences for supplemental table
-write.table(otu.vibrio,"vibrio_ASVs.txt",sep="\t",col.names=NA)
-
-names(otu.vibrio)[2]<-"ASV1"
-names(otu.vibrio)[3]<-"ASV2"
-names(otu.vibrio)[4]<-"ASV3"
-names(otu.vibrio)[5]<-"ASV4"
-names(otu.vibrio)[6]<-"ASV5"
-names(otu.vibrio)[7]<-"ASV6"
-names(otu.vibrio)[8]<-"ASV7"
-names(otu.vibrio)[9]<-"ASV8"
-names(otu.vibrio)[10]<-"ASV9"
-names(otu.vibrio)[11]<-"ASV10"
-names(otu.vibrio)[12]<-"ASV11"
-names(otu.vibrio)[13]<-"ASV12"
-names(otu.vibrio)[14]<-"ASV13"
-names(otu.vibrio)[15]<-"ASV14"
-names(otu.vibrio)[16]<-"ASV15"
-names(otu.vibrio)[17]<-"ASV16"
-names(otu.vibrio)[18]<-"ASV17"
-names(otu.vibrio)[19]<-"ASV18"
-names(otu.vibrio)[20]<-"ASV19"
-names(otu.vibrio)[21]<-"ASV20"
-names(otu.vibrio)[22]<-"ASV21"
-names(otu.vibrio)[23]<-"ASV22"
-names(otu.vibrio)[24]<-"ASV23"
-names(otu.vibrio)[25]<-"ASV24"
-names(otu.vibrio)[26]<-"ASV25"
-names(otu.vibrio)[27]<-"ASV26"
-names(otu.vibrio)[28]<-"ASV27"
-names(otu.vibrio)[29]<-"ASV28"
-
-meta.vibrio<-as.data.frame(meta.vibrio)
-meta.vibrio<-rownames_to_column(meta.vibrio,var="Sample")
-otu.vibrio.meta<-merge(meta.vibrio,otu.vibrio,"Sample")
-otu_long<-reshape2::melt(otu.vibrio.meta,id.vars=c("Sample","TagID","HealthState","Treatment","Treated","AllPresent","Status","Date"),variable.name="ASV",value.name="Proportion")
-
-# bubble plot, first need to detach plyr (or it overrides dplyr operations and the group_by doesn't work); detach Rmisc before plyr or it won't detach plyr
-detach(package:Rmisc)
-detach(package:plyr)
-otu_long_ASV <- otu_long %>% group_by(Treatment,ASV) %>% summarize(ASV_mean=mean(Proportion))
-#otu_long_ASV$radius <- sqrt(otu_long_ASV$ASV_mean / pi )
-otu_long_ASV$Treatment <- factor(otu_long_ASV$Treatment, levels = c("none","control bag","control paste", "probiotic bag","probiotic paste"))
-
-pdf("Vibrio_ASVs.pdf",bg = "white",width=10,height=5)
-p1<-ggplot(otu_long_ASV,aes(ASV,Treatment,color=ASV))+
-  geom_point(aes(size=ASV_mean))+
-  scale_size(range = c(0.5,10),name="Mean Relative Abundance")+
-  guides(color=FALSE)+  #removes the legend for the colors
-  scale_color_viridis(discrete=TRUE)+
-  theme(axis.text.x=element_text(size=10,angle=90,hjust=1,vjust=0,color="black"))+
-  theme(axis.text.y=element_text(size=12,color="black"))+
-  theme(axis.title.x=element_blank())+
-  theme(axis.title.y=element_blank())
-p1
-dev.off()
-
-```
-
-## Indicator species analysis
-
-Add metadata columns to ASV table with relative abundances as shown at the top of this tutorial: https://jkzorz.github.io/2019/07/02/Indicator-species-analysis.html
-
-
-```{r, echo=FALSE}
-
-asv <- read.table("silva_nochloronomito_otu_table_ps5_RA_ForIndicspecies.txt",sep="\t",header=TRUE)
-abund = asv[,6:ncol(asv)]
-treated=asv$Treated
-inv = multipatt(abund, treated, func = "r.g", control = how(nperm=9999))
-summary(inv)
-
-health=asv$HealthState
-inv2 = multipatt(abund, health, func = "r.g", control = how(nperm=9999))
-summary(inv2)
-
-```
 
 #ANCOM Function - compare across multiple treatments groups using a compositional appproach
 #https://sites.google.com/site/siddharthamandal1985/research
@@ -1293,14 +1277,14 @@ ANCOM.main = function(OTUdat,Vardat,
 }
 ```
 
-Perform ANCOM analysis
+Perform ANCOM analysis - only BS3 site
 
 ```{r, echo=FALSE}
 
-#Read in count data, not relative abundance, no low-abundance ASVs removed
-otu <- read.table("silva_nochloronomito_otu_table.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata.txt",sep="\t",header=T,row.names=1)
+#Read in count data, not relative abundance, no low-abundance ASVs removed - I'm not going to do that right now because it will take 2 hours to load
+otu <- read.table("silva_nochloronomito_otu_table_bs3.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_bs3.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_BS3.txt",sep="\t",header=T,row.names=1)
 OTU = otu_table(otu, taxa_are_rows=FALSE)
 taxon<-as.matrix(taxon)
 TAX = tax_table(taxon)
@@ -1308,12 +1292,9 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps #20031 taxa and 196 samples
-#Remove blanks
-ps = subset_samples(ps, TagID != "blank")
-ps #20031 taxa and 194 samples
+ps #456 taxa and 221 samples
 
-get_taxa_unique(ps, "Family") #678
+get_taxa_unique(ps, "Family") #129
 dat <- tax_glom(ps, taxrank = "Family")
 datm <- psmelt(dat)
 otud <- reshape2::dcast(datm, Sample ~ Family, value.var = 'Abundance', fun.aggregate = sum)
@@ -1324,7 +1305,7 @@ metadat <- tibble::rownames_to_column(metadat, "Sample.ID")
 names(otud) <- make.names(names(otud))
 otu_test <- otud
 write.table(otu_test,"ANCOM_otu_test.txt",sep="\t",col.names=NA)
-metadat <- select(metadat, c("Sample.ID","HealthState","Treatment","Status","Date","TagID","Treated")) # use select to only use treatment columns of interest
+metadat <- select(metadat, c("Sample.ID","treatment","condition","month","treated")) # select only columns of interest
 map_test <- metadat
 write.table(map_test,"ANCOM_map_test.txt",sep="\t",col.names=NA)
 
@@ -1339,7 +1320,7 @@ comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
                                  Vardat=map_test, #calling the metadata
                                  adjusted=FALSE, #true if covariates are to be included for adjustment
                                  repeated=FALSE, #repeated measure
-                                 main.var="Treatment", #main variable or fator
+                                 main.var="treatment", #main variable or fator
                                  adj.formula= NULL, #other factors to include
                                  repeat.var=FALSE, #repeated measure
                                  long = FALSE, #longitudinal study
@@ -1350,28 +1331,28 @@ res1 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor
 write.table(res1,"ANCOM_family_KruskallWallis_Treatment.txt",sep="\t",col.names=NA)
 res2 <- res1[which(res1$detected_0.7==TRUE),] 
 
-#### ANCOM test - Treatment, Adjusted by HealthState, ANOVA
+#### ANCOM test - Treatment, Adjusted by Condition, ANOVA
 comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
                                  Vardat=map_test, #calling the metadata
                                  adjusted=TRUE, #true if covariates are to be included for adjustment
                                  repeated=FALSE, #repeated measure
-                                 main.var="Treatment", #main variable or fator
-                                 adj.formula= "HealthState", #other factors to include
+                                 main.var="treatment", #main variable or fator
+                                 adj.formula= "condition", #other factors to include
                                  repeat.var=FALSE, #repeated measure
                                  long = FALSE, #longitudinal study
                                  multcorr=2,
                                  sig=0.05, #significance level
                                  prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
 res3 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res3,"ANCOM_family_ANOVA_Treatment_adjHealthState.txt",sep="\t",col.names=NA)
+write.table(res3,"ANCOM_family_ANOVA_Treatment_adjCondition.txt",sep="\t",col.names=NA)
 res4 <- res3[which(res3$detected_0.7==TRUE),] 
 
-#### ANCOM test - HealthState, no adjustment, KruskallWallis
+#### ANCOM test - Condition, no adjustment, KruskallWallis
 comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
                                  Vardat=map_test, #calling the metadata
                                  adjusted=FALSE, #true if covariates are to be included for adjustment
                                  repeated=FALSE, #repeated measure
-                                 main.var="HealthState", #main variable or fator
+                                 main.var="condition", #main variable or fator
                                  adj.formula= NULL, #other factors to include
                                  repeat.var=FALSE, #repeated measure
                                  long = FALSE, #longitudinal study
@@ -1379,31 +1360,31 @@ comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
                                  sig=0.05, #significance level
                                  prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
 res5 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res5,"ANCOM_family_KruskallWallis_HealthState.txt",sep="\t",col.names=NA)
+write.table(res5,"ANCOM_family_KruskallWallis_Condition.txt",sep="\t",col.names=NA)
 res6 <- res5[which(res5$detected_0.7==TRUE),] 
 
-#### ANCOM test - HealthState, Adjusted by Treatment, ANOVA
+#### ANCOM test - Condition, Adjusted by Treatment, ANOVA
 comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
                                  Vardat=map_test, #calling the metadata
                                  adjusted=TRUE, #true if covariates are to be included for adjustment
                                  repeated=FALSE, #repeated measure
-                                 main.var="HealthState", #main variable or fator
-                                 adj.formula= "Treatment", #other factors to include
+                                 main.var="condition", #main variable or fator
+                                 adj.formula= "treatment", #other factors to include
                                  repeat.var=FALSE, #repeated measure
                                  long = FALSE, #longitudinal study
                                  multcorr=2,
                                  sig=0.05, #significance level
                                  prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
 res7 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res7,"ANCOM_family_ANOVA_HealthState_adjTreatment.txt",sep="\t",col.names=NA)
+write.table(res7,"ANCOM_family_ANOVA_Condition_adjTreatment.txt",sep="\t",col.names=NA)
 res8 <- res7[which(res7$detected_0.7==TRUE),] 
 
-#### ANCOM test - Status, no adjustment, KruskallWallis
+#### ANCOM test - Treated, no adjustment, KruskallWallis
 comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
                                  Vardat=map_test, #calling the metadata
                                  adjusted=FALSE, #true if covariates are to be included for adjustment
                                  repeated=FALSE, #repeated measure
-                                 main.var="Status", #main variable or fator
+                                 main.var="treated", #main variable or fator
                                  adj.formula= NULL, #other factors to include
                                  repeat.var=FALSE, #repeated measure
                                  long = FALSE, #longitudinal study
@@ -1411,117 +1392,36 @@ comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
                                  sig=0.05, #significance level
                                  prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
 res9 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res9,"ANCOM_family_KruskallWallis_Status.txt",sep="\t",col.names=NA)
+write.table(res9,"ANCOM_family_KruskallWallis_treated.txt",sep="\t",col.names=NA)
 res10 <- res9[which(res9$detected_0.7==TRUE),] 
-
-#### ANCOM test - Status, Adjusted by Treatment, ANOVA
-comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
-                                 Vardat=map_test, #calling the metadata
-                                 adjusted=TRUE, #true if covariates are to be included for adjustment
-                                 repeated=FALSE, #repeated measure
-                                 main.var="Status", #main variable or fator
-                                 adj.formula= "Treatment", #other factors to include
-                                 repeat.var=FALSE, #repeated measure
-                                 long = FALSE, #longitudinal study
-                                 multcorr=2,
-                                 sig=0.05, #significance level
-                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
-res11 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res11,"ANCOM_family_ANOVA_Status_adjTreatment.txt",sep="\t",col.names=NA)
-res12 <- res11[which(res11$detected_0.7==TRUE),] 
-
-#### ANCOM test - Date, no adjustment, KruskallWallis
-comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
-                                 Vardat=map_test, #calling the metadata
-                                 adjusted=FALSE, #true if covariates are to be included for adjustment
-                                 repeated=FALSE, #repeated measure
-                                 main.var="Date", #main variable or fator
-                                 adj.formula= NULL, #other factors to include
-                                 repeat.var=FALSE, #repeated measure
-                                 long = FALSE, #longitudinal study
-                                 multcorr=2,
-                                 sig=0.05, #significance level
-                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
-res13 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res13,"ANCOM_family_KruskallWallis_Date.txt",sep="\t",col.names=NA)
-res14 <- res13[which(res13$detected_0.7==TRUE),] 
-
-#### ANCOM test - Date, Adjusted by Treatment, ANOVA
-comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
-                                 Vardat=map_test, #calling the metadata
-                                 adjusted=TRUE, #true if covariates are to be included for adjustment
-                                 repeated=FALSE, #repeated measure
-                                 main.var="Date", #main variable or fator
-                                 adj.formula= "Treatment", #other factors to include
-                                 repeat.var=FALSE, #repeated measure
-                                 long = FALSE, #longitudinal study
-                                 multcorr=2,
-                                 sig=0.05, #significance level
-                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
-res15 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res15,"ANCOM_family_ANOVA_Date_adjTreatment.txt",sep="\t",col.names=NA)
-res16 <- res15[which(res15$detected_0.7==TRUE),]
-res16b <- res15[which(res15$detected_0.9==TRUE),]
-
-#### ANCOM test - Colony (TagID) no adjustment, KruskallWallis
-comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
-                                 Vardat=map_test, #calling the metadata
-                                 adjusted=FALSE, #true if covariates are to be included for adjustment
-                                 repeated=FALSE, #repeated measure
-                                 main.var="TagID", #main variable or fator
-                                 adj.formula= NULL, #other factors to include
-                                 repeat.var=FALSE, #repeated measure
-                                 long = FALSE, #longitudinal study
-                                 multcorr=2,
-                                 sig=0.05, #significance level
-                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
-res17 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res17,"ANCOM_family_KruskallWallis_Colony.txt",sep="\t",col.names=NA)
-res18 <- res17[which(res17$detected_0.7==TRUE),] 
-
-#### ANCOM test - Colony, Adjusted by Date, ANOVA
-comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
-                                 Vardat=map_test, #calling the metadata
-                                 adjusted=TRUE, #true if covariates are to be included for adjustment
-                                 repeated=FALSE, #repeated measure
-                                 main.var="TagID", #main variable or fator
-                                 adj.formula= "Date", #other factors to include
-                                 repeat.var=FALSE, #repeated measure
-                                 long = FALSE, #longitudinal study
-                                 multcorr=2,
-                                 sig=0.05, #significance level
-                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
-res19 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
-write.table(res19,"ANCOM_family_ANOVA_Colony_adjDate.txt",sep="\t",col.names=NA)
-res20 <- res19[which(res19$detected_0.7==TRUE),] 
 
 ```
 
-Now plot the ANCOM results
+Now plot the ANCOM results: BS3 site only
 
 ```{r, echo=FALSE}
 
-sig_sites <- glue::glue_collapse(droplevels(factor(res16b$otu.names)), sep = ", ") #this is to get a list of the families that are different
+sig_sites <- glue::glue_collapse(droplevels(factor(res4$otu.names)), sep = ", ") #this is to get a list of the families that are different
 print(sig_sites)
 
 #Calculate relative abundance
-dim(otu_test) #194 rows 679 columns
-otu_test_relabund <-  sweep(otu_test[,2:679], 1, rowSums(otu_test[,2:679]), '/')
-otu_test_relnames <- cbind(map_test[,1:7],otu_test_relabund)
+dim(otu_test) #221 rows (samples) 130 columns (families)
+otu_test_relabund <-  sweep(otu_test[,2:130], 1, rowSums(otu_test[,2:130]), '/')
+otu_test_relnames <- cbind(map_test[,1:5],otu_test_relabund)
 
 # Select only the significant differentially abundant families listed by sig_sites
 # Note that any family names with punctuation must be enclosed with quotation marks!
-sig_dis <- select(otu_test_relnames, "Sample.ID", HealthState, Treatment, Status, Date, TagID, Treated, Desulfovibrionaceae, DEV007, Rubritaleaceae, "Clostridiaceae_4", Clostridiales, FGL7S, Micrococcaceae, Halomonadaceae, Sedimenticolaceae, Thiovulaceae, Crocinitomicaceae, Microtrichaceae, Midichloriaceae, Rhodobacteraceae, Shewanellaceae, Cyanobiaceae, Saccharospirillaceae, Terasakiellaceae, Thiohalorhabdaceae, Vibrionaceae, Microbacteriaceae, Pseudoalteromonadaceae, Alphaproteobacteria, Geodermatophilaceae, Phormidiaceae, Flavobacteriaceae, Nitrincolaceae, Phycisphaeraceae, Bacteria, Desulfobulbaceae, Thiomicrospiraceae, Rhizobiaceae, Rhodanobacteraceae)
-sig_long <- reshape2::melt(sig_dis, id.vars=c("Sample.ID","HealthState","Treatment","Status","Date","TagID","Treated"),variable.name="Family",value.name="Proportion")
-sum_sig <- Rmisc::summarySE(sig_long, measurevar = "Proportion", groupvars = c("Date","Family"), na.rm=TRUE)
+sig_dis <- select(otu_test_relnames, "Sample.ID", treatment, condition, month, treated, Cryomorphaceae, Vibrionaceae, "NS9.marine.group", Halomonadaceae, Rhodobacteraceae)
+sig_long <- reshape2::melt(sig_dis, id.vars=c("Sample.ID","treatment","condition","month","treated"),variable.name="Family",value.name="Proportion")
+sum_sig <- Rmisc::summarySE(sig_long, measurevar = "Proportion", groupvars = c("treatment","Family"), na.rm=TRUE)
+sum_sig$treatment <- factor(sum_sig$treatment, levels = c("none","control paste and bag","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control paste and bag"="#000066","probiotic paste and bag"="#993300","resistant"="#000000")
 
-sum_sig$Date<-factor(sum_sig$Date,levels=c("A","O","J"))
-cols <- c("A"="#56B4E9", "O"="#E69F00", "J"="#999999")
 
 pdf("ANCOM_Date_adjTreatment.pdf")
 fams <- ggplot(sum_sig, aes(x=Family, y=Proportion))+
-  geom_point(size=4, aes(color=Date))+
-  scale_color_manual(values=cols)+
+  geom_point(size=4, aes(color=treatment))+
+  scale_color_manual(values=treatcolors)+
   coord_flip()+
   theme_bw()+
   theme(axis.text.x=element_text(size=14))+

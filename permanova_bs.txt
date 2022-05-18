@@ -136,3 +136,22 @@ Total      479    738760                 1.00000
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 
+
+Call:
+adonis(formula = dist.clr ~ treated * site, data = as(sample_data(ps),      "data.frame")) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+              Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+treated        1      4922  4922.4  3.4709 0.00666  0.001 ***
+site           2     56563 28281.3 19.9418 0.07656  0.001 ***
+treated:site   2      5051  2525.7  1.7809 0.00684  0.016 *  
+Residuals    474    672224  1418.2         0.90994           
+Total        479    738760                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
