@@ -560,7 +560,7 @@ sampledata = sample_data(samples)
 ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
                sample_data(samples), 
                tax_table(taxon))
-ps 
+ps #33209 taxa and 592 samples
 # remove chloroplasts and mitochondria and Eukaryota
 get_taxa_unique(ps, "Family")
 get_taxa_unique(ps, "Order")
@@ -572,7 +572,7 @@ ps <- subset_taxa(ps, Kingdom !="NA")
 get_taxa_unique(ps, "Family")
 get_taxa_unique(ps, "Order") 
 get_taxa_unique(ps, "Kingdom")
-ps
+ps #31624 taxa and 592 samples
 
 # Now export cleaned otu and taxa tables from phyloseq for future reference
 otu = as(otu_table(ps), "matrix")
