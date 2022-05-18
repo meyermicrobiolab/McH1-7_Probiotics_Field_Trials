@@ -931,53 +931,6 @@ dev.off()
 
 ```
 
-
-
-
-
-```{r, echo=FALSE}
-##### bar charts
-otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
-taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
-samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
-OTU = otu_table(otu, taxa_are_rows=FALSE)
-taxon<-as.matrix(taxon)
-TAX = tax_table(taxon)
-sampledata = sample_data(samples)
-ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
-               sample_data(samples), 
-               tax_table(taxon))
-ps5 #456 taxa and 581 samples
-ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
-ps5_ra #456 taxa and 581 samples
-get_taxa_unique(ps5_ra, "Order") #67
-get_taxa_unique(ps5_ra, "Class") #23
-n <- 23
-palette <- distinctColorPalette(n)
-#you can rerun the previous line to get a new selection of colors
-# keep list of colors used in palette that is most appealing
-sink("palette.txt")
-print(palette)
-sink()
-
-samples$month<-factor(samples$month,levels=c("Jan","May","July","Aug","Sept","Oct","Nov"))
-samples$treatment <- factor(samples$treatment, levels = c("none","control bag","control paste","control paste and bag","probiotic bag","probiotic paste","probiotic paste and bag","resistant"))
-treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","control paste and bag"="#000066","probiotic bag"="#E69F00","probiotic paste"="#D55E00","probiotic paste and bag"="#993300","resistant"="#000000")
-
-pdf("barchart_Class.pdf",width=13)
-p1=plot_bar(ps5_ra, fill="Class")+
-  geom_bar(aes(fill=Class), stat="identity",position="stack")+
-  facet_grid(.~treatment,scales="free",space="free")+
-  theme(strip.text=element_text(face="bold"))+
-  theme(axis.text.x=element_text(angle = 90))+
-  scale_fill_manual(values=palette)+
-  theme(plot.title = element_text(face="italic"))+
-  theme(axis.title.x = element_blank())+
-  theme(legend.position = "bottom")
-p1
-dev.off()
-```
-
 ## Plot relative abundances of Pseudoalteromonas ASVs by treatment type
 
 
@@ -1418,7 +1371,7 @@ sum_sig$treatment <- factor(sum_sig$treatment, levels = c("none","control paste 
 treatcolors <- c("none"="#999999","control paste and bag"="#000066","probiotic paste and bag"="#993300","resistant"="#000000")
 
 
-pdf("ANCOM_Date_adjTreatment.pdf")
+pdf("ANCOM_Family_Treatment_adjCondition_BS3.pdf")
 fams <- ggplot(sum_sig, aes(x=Family, y=Proportion))+
   geom_point(size=4, aes(color=treatment))+
   scale_color_manual(values=treatcolors)+
@@ -1436,3 +1389,343 @@ fams
 dev.off()
 ```
 
+
+
+
+Perform ANCOM analysis - only BS3 site -----GENUS level
+
+```{r, echo=FALSE}
+
+#Read in count data, not relative abundance, no low-abundance ASVs removed - I'm not going to do that right now because it will take 2 hours to load
+otu <- read.table("silva_nochloronomito_otu_table_bs3.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_bs3.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_BS3.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps #456 taxa and 221 samples
+
+get_taxa_unique(ps, "Genus") #219
+dat <- tax_glom(ps, taxrank = "Genus")
+datm <- psmelt(dat)
+otud <- reshape2::dcast(datm, Sample ~ Genus, value.var = 'Abundance', fun.aggregate = sum)
+colnames(otud)[1] <- "Sample.ID"
+metadat <- sample_data(ps) 
+metadat <- as.data.frame(as.matrix(metadat))
+metadat <- tibble::rownames_to_column(metadat, "Sample.ID")
+names(otud) <- make.names(names(otud))
+otu_test <- otud
+write.table(otu_test,"ANCOM_otu_test_genus.txt",sep="\t",col.names=NA)
+metadat <- select(metadat, c("Sample.ID","treatment","condition","month","treated")) # select only columns of interest
+map_test <- metadat
+write.table(map_test,"ANCOM_map_test_genus.txt",sep="\t",col.names=NA)
+
+#bring in saved otu_test and map_test, if needed
+otu_test<-read.table("ANCOM_otu_test.txt",sep="\t",header=T,row.names=1)
+map_test<-read.table("ANCOM_map_test.txt",sep="\t",header=T,row.names=1)
+
+Vardat <- map_test
+
+#### ANCOM test - Treatment, not adjusted, more than 2 levels = Kruskal Wallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="treatment", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res1 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res1,"ANCOM_genus_KruskallWallis_Treatment.txt",sep="\t",col.names=NA)
+res2 <- res1[which(res1$detected_0.7==TRUE),] 
+
+#### ANCOM test - Treatment, Adjusted by Condition, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="treatment", #main variable or fator
+                                 adj.formula= "condition", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res3 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res3,"ANCOM_genus_ANOVA_Treatment_adjCondition.txt",sep="\t",col.names=NA)
+res4 <- res3[which(res3$detected_0.7==TRUE),] 
+
+#### ANCOM test - Condition, no adjustment, KruskallWallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="condition", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res5 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res5,"ANCOM_genus_KruskallWallis_Condition.txt",sep="\t",col.names=NA)
+res6 <- res5[which(res5$detected_0.7==TRUE),] 
+
+#### ANCOM test - Condition, Adjusted by Treatment, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="condition", #main variable or fator
+                                 adj.formula= "treatment", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res7 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res7,"ANCOM_genus_ANOVA_Condition_adjTreatment.txt",sep="\t",col.names=NA)
+res8 <- res7[which(res7$detected_0.7==TRUE),] 
+
+#### ANCOM test - Treated, no adjustment, KruskallWallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="treated", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res9 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res9,"ANCOM_genus_KruskallWallis_treated.txt",sep="\t",col.names=NA)
+res10 <- res9[which(res9$detected_0.7==TRUE),] 
+
+```
+
+Now plot the ANCOM results: BS3 site only - Genus level
+
+```{r, echo=FALSE}
+
+sig_sites <- glue::glue_collapse(droplevels(factor(res4$otu.names)), sep = ", ") #this is to get a list of the genera that are different
+print(sig_sites)
+#Ruegeria, NS4.marine.group, Rhodobacteraceae, Cryomorphaceae, NS9.marine.group, Vibrio, Halomonas, Photobacterium
+
+
+#Calculate relative abundance
+dim(otu_test) #221 rows (samples) 220 columns (219 genera)
+otu_test_relabund <-  sweep(otu_test[,2:220], 1, rowSums(otu_test[,2:220]), '/')
+otu_test_relnames <- cbind(map_test[,1:5],otu_test_relabund)
+
+# Select only the significant differentially abundant families listed by sig_sites
+# Note that any family names with punctuation must be enclosed with quotation marks!
+sig_dis <- select(otu_test_relnames, "Sample.ID", treatment, condition, month, treated, Ruegeria, "NS4.marine.group", Rhodobacteraceae, Cryomorphaceae, "NS9.marine.group", Vibrio, Halomonas, Photobacterium)
+sig_long <- reshape2::melt(sig_dis, id.vars=c("Sample.ID","treatment","condition","month","treated"),variable.name="Genus",value.name="Proportion")
+sum_sig <- Rmisc::summarySE(sig_long, measurevar = "Proportion", groupvars = c("treatment","Genus"), na.rm=TRUE)
+sum_sig$treatment <- factor(sum_sig$treatment, levels = c("none","control paste and bag","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control paste and bag"="#000066","probiotic paste and bag"="#993300","resistant"="#000000")
+
+
+pdf("ANCOM_Genus_Treatment_adjCondition_BS3.pdf")
+gen <- ggplot(sum_sig, aes(x=Genus, y=Proportion))+
+  geom_point(size=4, aes(color=treatment))+
+  scale_color_manual(values=treatcolors)+
+  coord_flip()+
+  theme_bw()+
+  theme(axis.text.x=element_text(size=14))+
+  theme(axis.text.y=element_text(size=14))+
+  theme(axis.title.x=element_text(size=14))+
+  theme(axis.title.y=element_text(size=14))+
+  #theme(legend.justification=c(1,1), legend.position=c(1,1))+
+  geom_errorbar(aes(ymin=Proportion-se, ymax=Proportion+se), width=.1)+
+  theme(legend.title = element_blank())+
+  theme(legend.text = element_text(size=12))
+gen
+dev.off()
+```
+
+
+
+
+
+
+JUST BS2 site
+```{r, echo=FALSE}
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),sample_data(samples),tax_table(taxon))
+ps #456 taxa and 581 samples
+bs2<-subset_samples(ps, site=="BS2")
+bs2  #456 taxa and 200 samples
+otu_bs2 = as(otu_table(bs2), "matrix")
+taxon_bs2 = as(tax_table(bs2), "matrix")
+meta_bs2 = as(sample_data(bs2), "matrix")
+write.table(otu_bs2,"silva_nochloronomito_otu_table_bs2.txt",sep="\t",col.names=NA)
+write.table(taxon_bs2,"silva_nochloronomito_taxa_table_bs2.txt",sep="\t",col.names=NA)
+write.table(meta_bs2,"metadata_bs2.txt",sep="\t",col.names=NA)
+otu <- read.table("silva_nochloronomito_otu_table_bs2.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_bs2.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_bs2.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps <- phyloseq(otu_table(otu, taxa_are_rows=FALSE),sample_data(samples),tax_table(taxon))
+ps  #456 taxa and 200 samples
+
+
+#Perform ANCOM analysis - only BS2 site -----GENUS level
+get_taxa_unique(ps, "Genus") #219
+dat <- tax_glom(ps, taxrank = "Genus")
+datm <- psmelt(dat)
+otud <- reshape2::dcast(datm, Sample ~ Genus, value.var = 'Abundance', fun.aggregate = sum)
+colnames(otud)[1] <- "Sample.ID"
+metadat <- sample_data(ps) 
+metadat <- as.data.frame(as.matrix(metadat))
+metadat <- tibble::rownames_to_column(metadat, "Sample.ID")
+names(otud) <- make.names(names(otud))
+otu_test <- otud
+write.table(otu_test,"ANCOM_otu_test_genus_BS2.txt",sep="\t",col.names=NA)
+metadat <- select(metadat, c("Sample.ID","treatment","condition","month","treated")) # select only columns of interest
+map_test <- metadat
+write.table(map_test,"ANCOM_map_test_genus_BS2.txt",sep="\t",col.names=NA)
+
+Vardat <- map_test
+
+#### ANCOM test - Treatment, not adjusted, more than 2 levels = Kruskal Wallis
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=FALSE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="treatment", #main variable or fator
+                                 adj.formula= NULL, #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res1 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res1,"ANCOM_genus_KruskallWallis_Treatment_BS2.txt",sep="\t",col.names=NA)
+res2 <- res1[which(res1$detected_0.7==TRUE),] 
+
+#### ANCOM test - Treatment, Adjusted by Condition, ANOVA
+comparison_test_treat=ANCOM.main(OTUdat=otu_test, #calling the OTU table
+                                 Vardat=map_test, #calling the metadata
+                                 adjusted=TRUE, #true if covariates are to be included for adjustment
+                                 repeated=FALSE, #repeated measure
+                                 main.var="treatment", #main variable or fator
+                                 adj.formula= "condition", #other factors to include
+                                 repeat.var=FALSE, #repeated measure
+                                 long = FALSE, #longitudinal study
+                                 multcorr=2,
+                                 sig=0.05, #significance level
+                                 prev.cut=0.90) #OTUs with proportion of zeroes greater than prev.cut are not included in the analysis
+res3 <- comparison_test_treat$W.taxa #taxa that significantly vary across factor level of interest
+write.table(res3,"ANCOM_genus_ANOVA_Treatment_adjCondition_BS2.txt",sep="\t",col.names=NA)
+res4 <- res3[which(res3$detected_0.7==TRUE),] 
+
+sig_sites <- glue::glue_collapse(droplevels(factor(res4$otu.names)), sep = ", ") #this is to get a list of the genera that are different
+print(sig_sites)
+#Halodesulfovibrio, Roseibacillus, Rubritalea, Paramaledivibacter, Verrucomicrobiales, Shimia, ML602J.51, Oceanospirillum, Candidatus.Thiodiazotropha, Candidatus.Aquiluna, Psychrobium
+
+
+#Calculate relative abundance
+dim(otu_test) #200 rows (samples) 220 columns (219 genera)
+otu_test_relabund <-  sweep(otu_test[,2:220], 1, rowSums(otu_test[,2:220]), '/')
+otu_test_relnames <- cbind(map_test[,1:5],otu_test_relabund)
+
+# Select only the significant differentially abundant families listed by sig_sites
+# Note that any family names with punctuation must be enclosed with quotation marks!
+sig_dis <- select(otu_test_relnames, "Sample.ID", treatment, condition, month, treated, Halodesulfovibrio, Roseibacillus, Rubritalea, Paramaledivibacter, Verrucomicrobiales, Shimia, "ML602J.51", Oceanospirillum, "Candidatus.Thiodiazotropha", "Candidatus.Aquiluna", Psychrobium)
+sig_long <- reshape2::melt(sig_dis, id.vars=c("Sample.ID","treatment","condition","month","treated"),variable.name="Genus",value.name="Proportion")
+sum_sig <- Rmisc::summarySE(sig_long, measurevar = "Proportion", groupvars = c("treatment","Genus"), na.rm=TRUE)
+sum_sig$treatment <- factor(sum_sig$treatment, levels = c("none","control bag","control paste","probiotic bag","probiotic paste","resistant"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","probiotic bag"="#E69F00","probiotic paste"="#D55E00","resistant"="#000000")
+
+pdf("ANCOM_Genus_Treatment_adjCondition_BS2.pdf")
+gen <- ggplot(sum_sig, aes(x=Genus, y=Proportion))+
+  geom_point(size=4, aes(color=treatment))+
+  scale_color_manual(values=treatcolors)+
+  coord_flip()+
+  theme_bw()+
+  theme(axis.text.x=element_text(size=14))+
+  theme(axis.text.y=element_text(size=14))+
+  theme(axis.title.x=element_text(size=14))+
+  theme(axis.title.y=element_text(size=14))+
+  #theme(legend.justification=c(1,1), legend.position=c(1,1))+
+  geom_errorbar(aes(ymin=Proportion-se, ymax=Proportion+se), width=.1)+
+  theme(legend.title = element_blank())+
+  theme(legend.text = element_text(size=12))
+gen
+dev.off()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+Save for later
+```{r, echo=FALSE}
+##### bar charts
+otu <- read.table("silva_nochloronomito_otu_table_ps5.txt",sep="\t",header=TRUE, row.names=1)
+taxon <- read.table("silva_nochloronomito_taxa_table_ps5.txt",sep="\t",header=TRUE,row.names=1)
+samples<-read.table("metadata_noblanks.txt",sep="\t",header=T,row.names=1)
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+taxon<-as.matrix(taxon)
+TAX = tax_table(taxon)
+sampledata = sample_data(samples)
+ps5 <- phyloseq(otu_table(otu, taxa_are_rows=FALSE), 
+               sample_data(samples), 
+               tax_table(taxon))
+ps5 #456 taxa and 581 samples
+ps5_ra<-transform_sample_counts(ps5, function(OTU) OTU/sum(OTU))
+ps5_ra #456 taxa and 581 samples
+get_taxa_unique(ps5_ra, "Order") #67
+get_taxa_unique(ps5_ra, "Class") #23
+n <- 23
+palette <- distinctColorPalette(n)
+#you can rerun the previous line to get a new selection of colors
+# keep list of colors used in palette that is most appealing
+sink("palette.txt")
+print(palette)
+sink()
+
+samples$month<-factor(samples$month,levels=c("Jan","May","July","Aug","Sept","Oct","Nov"))
+samples$treatment <- factor(samples$treatment, levels = c("none","control bag","control paste","control paste and bag","probiotic bag","probiotic paste","probiotic paste and bag","resistant"))
+treatcolors <- c("none"="#999999","control bag"="#56B4E9","control paste"="#0072B2","control paste and bag"="#000066","probiotic bag"="#E69F00","probiotic paste"="#D55E00","probiotic paste and bag"="#993300","resistant"="#000000")
+
+pdf("barchart_Class.pdf",width=13)
+p1=plot_bar(ps5_ra, fill="Class")+
+  geom_bar(aes(fill=Class), stat="identity",position="stack")+
+  facet_grid(.~treatment,scales="free",space="free")+
+  theme(strip.text=element_text(face="bold"))+
+  theme(axis.text.x=element_text(angle = 90))+
+  scale_fill_manual(values=palette)+
+  theme(plot.title = element_text(face="italic"))+
+  theme(axis.title.x = element_blank())+
+  theme(legend.position = "bottom")
+p1
+dev.off()
+```
